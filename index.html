@@ -62,6 +62,9 @@
             border-right: 4px solid var(--brand-orange); z-index: 20;
         }
 
+        .sidebar-logo { display: flex; align-items: center; justify-content: center; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .sidebar-logo img { max-width: 100%; max-height: 48px; object-fit: contain; }
+
         .login-section { display: flex; flex-direction: column; gap: 12px; background: var(--sidebar-panel); padding: 18px 15px; border-radius: 10px; border: 1px solid var(--input-border); }
         .field { display: flex; flex-direction: column; gap: 4px; }
         .field label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.8; font-weight: 600; }
@@ -89,8 +92,9 @@
         /* ===== PAINEL PRINCIPAL & CABEÇALHO ===== */
         .main-content { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
-        .top-header { background: var(--surface-color); padding: 15px 30px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); box-shadow: 0 2px 5px rgba(0,0,0,0.02); z-index: 10; position: relative;}
-        .header-logo img { height: 45px; object-fit: contain; }
+        .top-header { background: var(--surface-color); padding: 12px 30px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); box-shadow: 0 2px 5px rgba(0,0,0,0.02); z-index: 10; position: relative;}
+        .header-logo { display: flex; align-items: center; gap: 10px; }
+        .header-logo img { height: 44px; object-fit: contain; }
         
         .loading-container { flex: 1; max-width: 400px; margin-left: 30px; display: none; flex-direction: column; gap: 5px; }
         .loading-text { font-size: 11px; font-weight: 600; color: var(--brand-blue); text-transform: uppercase; letter-spacing: 0.5px;}
@@ -145,9 +149,9 @@
         .period-btn { padding: 6px 14px; border: 1px solid var(--border-color); border-radius: 20px; background: var(--surface-color); color: var(--text-main); font-size: 12px; cursor: pointer; transition: 0.2s; font-weight: 600;}
         .period-btn.active { background: var(--brand-blue); color: #fff; border-color: var(--brand-blue); }
 
-        .error-container { text-align: center; padding: 40px; background: var(--surface-color); border-radius: 8px; border: 2px dashed var(--border-color); color: var(--text-main); line-height: 1.6; margin-bottom: 20px;}
+        .error-container { text-align: center; padding: 30px; background: var(--surface-color); border-radius: 8px; border: 2px dashed var(--border-color); color: var(--text-main); line-height: 1.6; margin-bottom: 20px;}
         
-        /* Popup Customizado do Mapa */
+        /* Popup do Mapa */
         .leaflet-popup-content { font-family: 'Segoe UI', Roboto, sans-serif; font-size: 12px; line-height: 1.5;}
         .leaflet-popup-content h4 { margin: 0 0 5px 0; color: var(--brand-blue); font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 5px;}
     </style>
@@ -156,7 +160,13 @@
 
     <!-- ===== SIDEBAR ===== -->
     <div class="sidebar">
-        <!-- LOGIN SECTION LIMPA: APENAS USUÁRIO, SENHA E DATAS -->
+        <div class="sidebar-logo">
+            <img src="cavalheiro-logistics.png" alt="CavalheiroLog" onerror="this.style.display='none'; document.getElementById('logoFallbackSidebar').style.display='flex';">
+            <div id="logoFallbackSidebar" style="display:none; font-size:22px; font-weight:800; color:#fff;">
+                Cavalheiro<span style="color:var(--brand-orange)">log</span>
+            </div>
+        </div>
+
         <div class="login-section">
             <div class="field">
                 <label>👤 Usuário da API</label>
@@ -192,14 +202,16 @@
         <button class="theme-toggle" id="themeToggle">🌙 Modo Escuro</button>
     </div>
 
-    <!-- ===== PAINEL PRINCIPAL & CABEÇALHO ===== -->
+    <!-- ===== PAINEL PRINCIPAL ===== -->
     <div class="main-content">
         
-        <!-- CABEÇALHO SUPERIOR C/ LOGO -->
+        <!-- CABEÇALHO COM LOGO -->
         <header class="top-header">
             <div class="header-logo">
-                <!-- LOGO OFICIAL -->
-                <img src="cavalheiro-logistics.png" alt="Cavalheiro Log" onerror="this.src='https://via.placeholder.com/200x50/36495d/ffffff?text=Cavalheiro+Logistics'">
+                <img src="cavalheiro-logistics.png" alt="CavalheiroLog" onerror="this.style.display='none'; document.getElementById('logoFallbackHeader').style.display='flex';">
+                <div id="logoFallbackHeader" style="display:none; font-size:24px; font-weight:800; color:var(--brand-blue);">
+                    Cavalheiro<span style="color:var(--brand-orange)">log</span>
+                </div>
             </div>
             <div class="loading-container" id="loadingContainer">
                 <div class="loading-text" id="loadingText">Conectando...</div>
@@ -221,7 +233,7 @@
                 <button class="nav-tab" data-tab="tab-integration">🔗 Integração ERP</button>
             </div>
 
-            <!-- MENSAGEM GLOBAL DE ERRO / LOADING -->
+            <!-- MENSAGEM GLOBAL DE STATUS / ALERTA -->
             <div id="globalMessageArea"></div>
 
             <!-- KPIs -->
@@ -324,9 +336,16 @@
             </div>
 
             <div id="tab-heatmap" class="tab-content">
+                <div class="filter-bar">
+                    <span style="font-weight: 600; font-size: 12px;">Filtrar Postos no Mapa:</span>
+                    <button class="period-btn active" data-mapfilter="all">Todos</button>
+                    <button class="period-btn" data-mapfilter="A">Classe A</button>
+                    <button class="period-btn" data-mapfilter="B">Classe B</button>
+                    <button class="period-btn" data-mapfilter="C">Classe C</button>
+                </div>
                 <div class="charts-grid one-col">
                     <div class="chart-box">
-                        <h3>🔥 Geoprocessamento de Abastecimento (Localização ABC e Volume)</h3>
+                        <h3>🔥 Localização Geográfica e Concentração ABC</h3>
                         <div class="chart-container map">
                             <div id="heatmap" style="height:100%;width:100%;"></div>
                         </div>
@@ -369,14 +388,11 @@
     </div>
 
     <script>
-        // ================================================================
-        // CONSTANTE FIXA PARA PREÇO BASE ALVO E ROTA DA API
-        // ================================================================
         const PRECO_BASE_PADRAO = 7.18;
         const API_BASE = 'https://api.truckpag.com.br';
 
         // ================================================================
-        // 0. MD5 OFICIAL DA TRUCKPAG
+        // 0. MD5 OFICIAL
         // ================================================================
         function md5(string) {
             function md5RotateLeft(lValue, iShiftBits) { return (lValue << iShiftBits) | (lValue >>> (32 - iShiftBits)); }
@@ -463,75 +479,94 @@
 
         let transacoesGlobais = [], todosPostos = [], dadosIntegracao = { transacoes: [], vinculos: [], titulos: [] };
         let currentPeriod = 'daily', currentFilter = 'all', currentIntegration = 'transacoes';
+        let currentMapFilter = 'all';
         let mapInstance = null, heatmapInstance = null, markersLayer = null;
         let updateTimer = null;
 
         // ================================================================
-        // 2. FUNÇÕES DA API TRUCKPAG (CONEXÃO PURA DIRETA)
+        // 2. COMUNICAÇÃO PURA COM A API TRUCKPAG (SEM INTERMEDIÁRIOS)
         // ================================================================
-        
-        // FETCH TRANSAÇÕES
         async function fetchTransacoes(usuario, senha, dtIni, dtFim) {
-            
-            // Garantia absoluta do Hash: Se a senha for a cadastrada, usa o hash perfeito que você mandou na imagem.
             const hash = (senha === '2Xuzj@r4#') ? '077658c5f44817a3366d50797ceceffe' : md5(senha);
             const credentials = btoa(usuario + ':' + hash);
             
-            // 1. FAZ O LOGIN PARA PEGAR O TOKEN JWT DA API LEGADA
+            // 1. AUTENTICAÇÃO OFICIAL NA TRUCKPAG
             const authRes = await fetch(`${API_BASE}/auth`, {
                 method: 'POST',
                 headers: { 'Authorization': `Basic ${credentials}` }
             });
             
             if (!authRes.ok) {
-                if(authRes.status === 403) throw new Error("A TruckPag bloqueou a conexão (Erro 403 - Forbidden). Certifique-se de que não há VPNs ativas.");
-                if(authRes.status === 401) throw new Error("Usuário ou Senha Incorretos (Erro 401).");
+                if(authRes.status === 403) throw new Error("Acesso 403 Forbidden. Certifique-se de que a extensão de CORS está ligada.");
+                if(authRes.status === 401) throw new Error("Usuário ou Senha incorretos.");
                 throw new Error(`Falha no Login (HTTP ${authRes.status}).`);
             }
             
             const authData = await authRes.json();
             const token = authData.token; 
             
-            // 2. COM O TOKEN JWT EM MÃOS, PUXA AS TRANSAÇÕES
+            // 2. BUSCA DE TRANSAÇÕES
             const urlLegacy = `${API_BASE}/Transacoes?dtini=${formatAPI(dtIni)}&dtfim=${formatAPI(dtFim)}&todas=S`;
             
             const res = await fetch(urlLegacy, { headers: { 'Authorization': `Bearer ${token}` } });
             
-            if (!res.ok) throw new Error(`Erro no servidor da TruckPag ao baixar os dados (HTTP ${res.status})`);
+            if (!res.ok) throw new Error(`Erro retornado pela TruckPag (HTTP ${res.status})`);
             
             const txt = await res.text();
-            if (!txt.trim()) return { result: [], token };
+            if (!txt.trim()) return { result: [], token, cabecalho: null };
             
             let raw;
-            try { raw = JSON.parse(txt); } catch(e) { return { result: [], token }; }
+            try { raw = JSON.parse(txt); } catch(e) { return { result: [], token, cabecalho: null }; }
             
-            const result = [];
-            const mapearDados = (t) => {
-                const volume = parseFloat(t.Litragem || t.litragem) || 0;
-                const valorTotal = parseFloat(t.Valor || t.valor) || 0;
-                return {
-                    estabelecimento: t.NomeFantasiaPosto || t.RazaoSocialPosto || t.Estabelecimento || 'Não informado',
-                    cidade: t.CidadePosto || t.Cidade || '',
-                    uf: t.UFPosto || t.UF || '',
-                    volume: volume,
-                    valor_litro: volume > 0 ? (valorTotal / volume) : 0,
-                    valor_total: valorTotal,
-                    data: t.DataTransacao || t.data || '',
-                    placa: t.Placa || t.placa || 'ND',
-                    IdTransacao: t.Transacao || '-',
-                    Valor: valorTotal
-                };
-            };
+            console.log("==> RETORNO BRUTO DA TRUCKPAG:", raw);
 
-            if (raw.Transacoes && Array.isArray(raw.Transacoes)) {
-                raw.Transacoes.forEach(t => { if (t.Servico === 'Abastecimento') result.push(mapearDados(t)); });
-            } else if (Array.isArray(raw)) {
-                raw.forEach(t => { if (t.Servico === 'Abastecimento' || t.Servico === 1) result.push(mapearDados(t)); });
+            // Mapeador universal para capturar qualquer campo de retorno
+            let rawList = [];
+            if (Array.isArray(raw)) {
+                rawList = raw;
+            } else if (raw && typeof raw === 'object') {
+                if (Array.isArray(raw.Transacoes)) rawList = raw.Transacoes;
+                else if (Array.isArray(raw.transacoes)) rawList = raw.transacoes;
+                else if (Array.isArray(raw.Dados)) rawList = raw.Dados.flatMap(d => d.Transacoes || d.transacoes || d);
+                else if (Array.isArray(raw.data)) rawList = raw.data;
+                else {
+                    for (let key of Object.keys(raw)) {
+                        if (Array.isArray(raw[key]) && key.toLowerCase() !== 'cabecalho') {
+                            rawList = raw[key];
+                            break;
+                        }
+                    }
+                }
             }
-            return { result, token }; 
+
+            const result = [];
+            rawList.forEach(t => {
+                const volume = parseFloat(t.Litragem || t.litragem || t.volume || t.Volume || 0);
+                const valorTotal = parseFloat(t.Valor || t.valor || t.valor_total || t.ValorTotal || 0);
+                
+                // Aceita qualquer abastecimento sem restrição de maiúsculas ou nomenclaturas
+                const servicoStr = String(t.Servico || t.servico || '').toLowerCase();
+                const isAbastecimento = servicoStr.includes('abastec') || t.Servico == 1 || volume > 0 || valorTotal > 0;
+                
+                if (isAbastecimento) {
+                    result.push({
+                        estabelecimento: t.NomeFantasiaPosto || t.RazaoSocialPosto || t.Estabelecimento || t.estabelecimento || t.Posto || t.posto || 'Posto Não Informado',
+                        cidade: t.CidadePosto || t.Cidade || t.cidade || '',
+                        uf: t.UFPosto || t.UF || t.uf || t.Estado || '',
+                        volume: volume,
+                        valor_litro: volume > 0 ? (valorTotal / volume) : parseFloat(t.valor_litro || t.ValorLitro || 0),
+                        valor_total: valorTotal,
+                        data: t.DataTransacao || t.data || t.data_transacao || t.Data || '',
+                        placa: t.Placa || t.placa || t.veiculo_placa || 'ND',
+                        IdTransacao: t.Transacao || t.transacao || t.IdTransacao || t.id || '-',
+                        Valor: valorTotal
+                    });
+                }
+            });
+
+            return { result, token, cabecalho: (raw && raw.Cabecalho) ? raw.Cabecalho[0] : null }; 
         }
 
-        // FETCH VINCULOS E TITULOS
         async function fetchPendencias(token, dtIni, dtFim) {
             let v = [], t = [];
             try {
@@ -548,18 +583,19 @@
         }
 
         // ================================================================
-        // 3. PROCESSAMENTO E AGRUPAMENTO
+        // 3. PROCESSAMENTO E CRUZAMENTO DE DADOS
         // ================================================================
         function processarPostos(transacoes) {
             const map = new Map();
             transacoes.forEach(t => {
                 const key = t.estabelecimento || 'Não informado';
-                if (!map.has(key)) map.set(key, { posto: key, cidade: `${t.cidade} - ${t.uf}`.replace(/^ - /, ''), volume: 0, custo: 0, economia: 0, placas: new Set() });
+                if (!map.has(key)) map.set(key, { posto: key, cidade: `${t.cidade} - ${t.uf}`.replace(/^ - /, ''), volume: 0, custo: 0, economia: 0, placas: new Set(), transacoesCount: 0 });
                 
                 const p = map.get(key);
                 p.volume += t.volume; p.custo += t.valor_total;
                 p.economia += t.volume * (PRECO_BASE_PADRAO - t.valor_litro);
                 p.placas.add(t.placa);
+                p.transacoesCount++;
             });
 
             const postos = Array.from(map.values());
@@ -606,7 +642,7 @@
         }
 
         // ================================================================
-        // 4. MAPA DE AUDITORIA (GOOGLE HÍBRIDO + HEATMAP + MARCADORES ABC)
+        // 4. MAPA HÍBRIDO INTERATIVO (CALOR + PINOS POR CLASSE ABC)
         // ================================================================
         const coordsBrasil = {
             'MATUPA - MT': { lat: -10.584, lng: -54.928 }, 'VARZEA GRANDE - MT': { lat: -15.65, lng: -56.13 },
@@ -633,7 +669,6 @@
                 mapCidade.get(key).volume += t.volume;
             });
 
-            // Prepara os dados para o mapa de Calor
             const pontosCalor = [];
             mapCidade.forEach((value, key) => {
                 const coord = getCoordForCity(key);
@@ -643,22 +678,39 @@
 
             if (mapInstance) mapInstance.remove();
             
-            // Camadas Base (O Híbrido do Google já traz satélite + Nomes/Rodovias/Fronteiras integrados perfeitamente)
+            // Google Maps Híbrido: Satélite de alta resolução com rodovias e divisões territoriais
             const googleHybrid = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxZoom: 18, attribution: '© Google Maps' });
             const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '© OSMap' });
 
             mapInstance = L.map('heatmap', { layers: [googleHybrid], zoomControl: true }).setView([-15.0, -50.0], 4);
             
-            // Camada de Calor (Heatmap)
             heatmapInstance = L.heatLayer(pontosCalor, { radius: 25, blur: 20, maxZoom: 10, gradient: { 0.2: 'blue', 0.4: 'lime', 0.6: 'yellow', 0.8: 'orange', 1.0: 'red' } });
 
-            // Camada de Marcadores ABC interativos
-            if (markersLayer) markersLayer.clearLayers();
+            // Camada de Marcadores com filtro ABC
             markersLayer = L.layerGroup();
+            atualizarMarcadoresMapa();
 
-            todosPostos.forEach(p => {
+            L.control.layers(
+                { "Satélite Híbrido (Rodovias & Cidades)": googleHybrid, "Mapa de Ruas": osmLayer }, 
+                { "Mancha de Calor": heatmapInstance, "Postos (Classificação ABC)": markersLayer }
+            ).addTo(mapInstance);
+            
+            mapInstance.addLayer(heatmapInstance);
+            mapInstance.addLayer(markersLayer);
+
+            if(pontosCalor.length > 0) mapInstance.fitBounds(pontosCalor.map(p => [p[0], p[1]]), { padding: [30, 30] });
+            
+            renderStateTable(mapCidade);
+        }
+
+        function atualizarMarcadoresMapa() {
+            if (!markersLayer) return;
+            markersLayer.clearLayers();
+
+            const postosFiltrados = currentMapFilter === 'all' ? todosPostos : todosPostos.filter(p => p.abc === currentMapFilter);
+
+            postosFiltrados.forEach(p => {
                 const coord = getCoordForCity(`${p.cidade} - ${p.uf}`);
-                // Adiciona ruído suave para espalhar postos na mesma cidade e não encavalarem totalmente
                 const lat = coord.lat + (Math.random() - 0.5) * 0.03;
                 const lng = coord.lng + (Math.random() - 0.5) * 0.03;
 
@@ -669,36 +721,23 @@
                 });
 
                 marker.bindPopup(`
-                    <div style="font-size: 12px; min-width: 150px;">
+                    <div style="font-size: 12px; min-width: 170px;">
                         <h4>${p.posto}</h4>
                         <span style="color:#666;">${p.cidade} - ${p.uf}</span><br><br>
-                        <b>Classe:</b> <span class="badge-abc ${p.abc}">${p.abc}</span><br>
+                        <b>Classificação:</b> <span class="badge-abc ${p.abc}">Classe ${p.abc}</span><br>
                         <b>Volume Total:</b> ${fmt(p.volume)} L<br>
                         <b>Preço Médio:</b> R$ ${fmt(p.precoMedio)}<br>
-                        <b>Custo Total:</b> R$ ${fmt(p.custo)}<br>
-                        <b>Veículos Atendidos:</b> ${p.qtdVeiculos}
+                        <b>Gasto Total:</b> R$ ${fmt(p.custo)}<br>
+                        <b>Abastecimentos:</b> ${p.transacoesCount || '-'}<br>
+                        <b>Caminhões:</b> ${p.qtdVeiculos}
                     </div>
                 `);
                 markersLayer.addLayer(marker);
             });
-
-            // Adiciona Controles no canto superior direito para o usuário poder ligar/desligar o calor e os pinos ABC
-            L.control.layers(
-                { "Visão Satélite Híbrida": googleHybrid, "Mapa de Ruas": osmLayer }, 
-                { "Rastro de Calor": heatmapInstance, "Localização Postos (ABC)": markersLayer }
-            ).addTo(mapInstance);
-            
-            // Ativa ambas as camadas por padrão para impressionar
-            mapInstance.addLayer(heatmapInstance);
-            mapInstance.addLayer(markersLayer);
-
-            if(pontosCalor.length > 0) mapInstance.fitBounds(pontosCalor.map(p => [p[0], p[1]]), { padding: [30, 30] });
-            
-            renderStateTable(mapCidade);
         }
 
         // ================================================================
-        // 6. RENDERIZAÇÃO DA TELA (TABELAS E GRÁFICOS)
+        // 5. RENDERIZAÇÃO DA TELA (TABELAS E GRÁFICOS)
         // ================================================================
         function fmt(v) { return Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
         
@@ -812,12 +851,10 @@
         function renderIntegration(type) {
             const tbody = document.getElementById('integrationBody'); const thead = document.getElementById('integrationHead');
             let rows = '';
-            // Limpa mock da tela inicial
             if(transacoesGlobais.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="4" class="text-center" style="padding:30px; color:var(--text-muted);">Nenhum dado pendente nesta aba.</td></tr>`;
                 return;
             }
-            
             if(type==='transacoes'){
                 thead.innerHTML=`<tr><th class="text-left">Posto</th><th class="text-left">Data</th><th class="text-left">Placa</th><th class="text-right">Valor R$</th></tr>`;
                 const tLimit = transacoesGlobais.slice(0,50); 
@@ -833,7 +870,7 @@
         }
 
         // ================================================================
-        // 7. MOTOR DE CONEXÃO E GERENCIADOR DE ERROS
+        // 6. MOTOR DE FILTRO E EXECUÇÃO
         // ================================================================
         let isConnecting = false;
         async function conectar() {
@@ -854,7 +891,7 @@
                 uiLoader.show(15, 'Autenticando...');
                 statusMsg.innerHTML = 'Conectando à TruckPag...'; statusMsg.className = 'status-msg';
 
-                const { result: transacoes, token } = await fetchTransacoes(usuario, senha, dtIni, dtFim);
+                const { result: transacoes, token, cabecalho } = await fetchTransacoes(usuario, senha, dtIni, dtFim);
                 
                 uiLoader.show(50, 'Buscando Pendências ERP...');
                 const pendencias = await fetchPendencias(token, dtIni, dtFim);
@@ -865,8 +902,12 @@
                 dadosIntegracao = pendencias;
                 
                 if(transacoes.length === 0) {
-                    globalMsg.innerHTML = `<div class="error-container" style="border-color: var(--warning);">⚠️ <b>Conexão Estabelecida com Sucesso!</b><br><br>A TruckPag não retornou <b>nenhum abastecimento</b> na sua frota entre as datas selecionadas.<br><br><i>Tente aumentar o intervalo de datas.</i></div>`;
-                    statusMsg.innerHTML = `⚠️ Conectado (Zero abastecimentos)`;
+                    let detalhe = "Não há nenhum abastecimento registrado na frota entre as datas selecionadas.";
+                    if (cabecalho && cabecalho.QtdeRegistros === 0) {
+                        detalhe = "A TruckPag respondeu com sucesso confirmando que constam 0 registros neste período específico.";
+                    }
+                    globalMsg.innerHTML = `<div class="error-container" style="border-color: var(--warning);">⚠️ <b>Conexão Estabelecida com Sucesso!</b><br><br>${detalhe}<br><i>Tente aumentar o intervalo de datas ou consultar o início do mês corrente.</i></div>`;
+                    statusMsg.innerHTML = `⚠️ 0 abastecimentos no filtro`;
                     statusMsg.className = 'status-msg warning';
                     renderOverviewCharts(); renderMainChart(currentPeriod); renderPriceChart(currentPeriod); renderAbcCharts(); renderStationsTable('all'); renderIntegration('transacoes');
                 } else {
@@ -876,16 +917,13 @@
                     renderKpis(); renderStationsTable(currentFilter); renderOverviewCharts(); renderHeatmap(); renderIntegration('transacoes');
                     renderMainChart(currentPeriod); renderPriceChart(currentPeriod); renderPeriodTable(currentPeriod); renderAbcCharts();
                     
-                    statusMsg.innerHTML = `✅ <b>${transacoes.length} abastecimentos reais carregados</b>`;
+                    statusMsg.innerHTML = `✅ <b>${transacoes.length} abastecimentos reais</b>`;
                     statusMsg.className = 'status-msg success';
                 }
 
             } catch (err) {
                 console.error(err);
-                let msg = err.message;
-                if(msg.includes('Failed to fetch')) msg = "O navegador bloqueou a conexão (Erro de CORS). Certifique-se de que sua extensão 'CORS Unblock' está ligada e o campo de Headers está habilitado nela.";
-                
-                globalMsg.innerHTML = `<div class="error-container">❌ <b>Falha na Conexão com a TruckPag</b><br><br>${msg}</div>`;
+                globalMsg.innerHTML = `<div class="error-container">❌ <b>Falha na Conexão com a TruckPag</b><br><br>${err.message}<br><br><small>Verifique se sua extensão de CORS está ligada e configurada com '*' e Headers permitidos.</small></div>`;
                 statusMsg.innerHTML = `❌ Erro de Conexão`; 
                 statusMsg.className = 'status-msg error';
             } finally {
@@ -896,11 +934,11 @@
         }
 
         // ================================================================
-        // 8. EVENTOS E INICIALIZAÇÃO
+        // 7. EVENTOS E INICIALIZAÇÃO
         // ================================================================
         document.getElementById('btnMock').addEventListener('click', () => {
             document.getElementById('globalMessageArea').innerHTML = '';
-            uiLoader.show(20, 'Gerando Dados Fictícios...');
+            uiLoader.show(20, 'Gerando Dados de Teste...');
             
             setTimeout(() => {
                 transacoesGlobais = [];
@@ -924,10 +962,9 @@
                 renderMainChart(currentPeriod); renderPriceChart(currentPeriod); renderPeriodTable(currentPeriod); renderAbcCharts();
                 
                 document.getElementById('statusMsg').textContent = `✅ Mock carregado!`; document.getElementById('statusMsg').className = 'status-msg success';
-                
                 uiLoader.show(100, 'Pronto!');
                 uiLoader.hide();
-            }, 600);
+            }, 500);
         });
 
         const inInicio = document.getElementById('dataInicio');
@@ -952,21 +989,28 @@
                 if(tId === 'tab-heatmap' && mapInstance) setTimeout(()=>mapInstance.invalidateSize(), 100);
             }
         });
+
         document.querySelectorAll('.period-btn[data-filter]').forEach(b => b.addEventListener('click', function(){
             document.querySelectorAll('.period-btn[data-filter]').forEach(btn=>btn.classList.remove('active'));
             this.classList.add('active'); currentFilter = this.dataset.filter; renderStationsTable(currentFilter);
         }));
+
+        document.querySelectorAll('.period-btn[data-mapfilter]').forEach(b => b.addEventListener('click', function(){
+            document.querySelectorAll('.period-btn[data-mapfilter]').forEach(btn=>btn.classList.remove('active'));
+            this.classList.add('active'); currentMapFilter = this.dataset.mapfilter; atualizarMarcadoresMapa();
+        }));
+
         document.querySelectorAll('.period-btn[data-integration]').forEach(b => b.addEventListener('click', function(){
             document.querySelectorAll('.period-btn[data-integration]').forEach(btn=>btn.classList.remove('active'));
             this.classList.add('active'); renderIntegration(this.dataset.integration);
         }));
+
         document.querySelectorAll('.period-btn[data-period]').forEach(b => b.addEventListener('click', function(){
             document.querySelectorAll('.period-btn[data-period]').forEach(btn=>btn.classList.remove('active'));
             this.classList.add('active'); currentPeriod = this.dataset.period;
             if(transacoesGlobais.length > 0) { renderMainChart(currentPeriod); renderPriceChart(currentPeriod); renderPeriodTable(currentPeriod); }
         }));
 
-        // Início (Ao carregar a página)
         window.onload = () => {
             const hoje = new Date(); 
             const formatDataInput = (d) => {
@@ -979,7 +1023,7 @@
             inInicio.value = localStorage.getItem('cavalheiro_dtIni') || strHoje;
             inFim.value = localStorage.getItem('cavalheiro_dtFim') || strHoje;
             
-            document.getElementById('globalMessageArea').innerHTML = '<div class="error-container" style="border-color: var(--border-color); color: var(--text-muted);">👆 Configure a data desejada e clique em <b>"FILTRAR"</b> no menu lateral.</div>';
+            document.getElementById('globalMessageArea').innerHTML = '<div class="error-container" style="border-color: var(--border-color); color: var(--text-muted);">👆 Selecione o período e clique em <b>"FILTRAR"</b> para consultar os lançamentos da frota.</div>';
         };
     </script>
 </body>
