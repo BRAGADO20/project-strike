@@ -86,7 +86,7 @@
         .status-msg.error { color: #ff6b6b; border: 1px solid #ff6b6b; background: rgba(255, 107, 107, 0.1); }
         .status-msg.success { color: #69db7c; border: 1px solid #69db7c; background: rgba(105, 219, 124, 0.1);}
         .status-msg.info { color: #74c0fc; border: 1px solid #74c0fc; background: rgba(116, 192, 252, 0.1);}
-        .status-msg.warning { color: #f5b041; border: 1px solid #f5b041; background: rgba(245, 176, 65, 0.1);} /* Novo: Estado de Aviso */
+        .status-msg.warning { color: #f5b041; border: 1px solid #f5b041; background: rgba(245, 176, 65, 0.1);}
 
         .theme-toggle { margin-top: auto; background: transparent; border: 1px solid var(--input-border); color: var(--text-light); padding: 10px; border-radius: 8px; cursor: pointer; font-weight: 600; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
         .theme-toggle:hover { background: rgba(255,255,255,0.1); }
@@ -156,6 +156,9 @@
         .period-btn:hover { background: var(--bg-color); }
         .period-btn.active { background: var(--brand-blue); color: #fff; border-color: var(--brand-blue); }
         .total-row td { background: var(--table-header) !important; font-weight: bold; border-top: 2px solid var(--brand-blue); }
+        
+        /* Centralizar mensagens de erro massivas */
+        .error-container { text-align: center; padding: 40px; background: var(--surface-color); border-radius: 12px; border: 2px dashed var(--danger); color: var(--text-main); }
     </style>
 </head>
 <body>
@@ -226,6 +229,9 @@
                 <button class="nav-tab" data-tab="tab-heatmap">🔥 Mapa de Calor</button>
                 <button class="nav-tab" data-tab="tab-integration">🔗 Pendências API</button>
             </div>
+
+            <!-- MENSAGEM GLOBAL DE ERRO / LOADING (Substitui os KPIs temporariamente) -->
+            <div id="globalMessageArea"></div>
 
             <!-- KPIs -->
             <div class="kpi-grid" id="kpiGrid"></div>
@@ -485,7 +491,7 @@
             return data.token;
         }
 
-        // FETCH TRANSAÇÕES
+        // FETCH TRANSAÇÕES COM PARSE SEGURO (Evita quebrar se a API retornar vazio)
         async function fetchTransacoes(token, dtIni, dtFim) {
             const apiBase = getApiBase();
             const url = `${apiBase}/Transacoes?dtini=${formatAPI(dtIni)}&dtfim=${formatAPI(dtFim)}&todas=S`;
@@ -494,14 +500,23 @@
             
             if (!response.ok) {
                 const errText = await response.text();
-                throw new Error(`HTTP ${response.status} - Falha ao baixar Transações: ${errText}`);
+                throw new Error(`Falha em /Transacoes (HTTP ${response.status}): ${errText}`);
             }
             
-            const raw = await response.json();
-            const result = [];
+            const textResponse = await response.text();
             
-            // API retorna vazio quando não tem dados
-            if (!raw || Object.keys(raw).length === 0) return [];
+            // SE A API DEVOLVER VAZIO, SIGNIFICA QUE NÃO HÁ DADOS NO PERÍODO. (EVITA O ERRO JSON)
+            if (!textResponse || textResponse.trim() === '') return []; 
+            
+            let raw;
+            try {
+                raw = JSON.parse(textResponse);
+            } catch (e) {
+                console.warn("A TruckPag retornou algo que não é JSON:", textResponse);
+                return [];
+            }
+            
+            const result = [];
             
             if (raw.Transacoes && Array.isArray(raw.Transacoes)) {
                 raw.Transacoes.forEach(t => {
@@ -551,12 +566,18 @@
             let v = [], t = [];
             try {
                 const resV = await fetch(`${apiBase}/NotaFiscal/Vinculo?dtIni=${dtIni}&dtFim=${dtFim}`, { headers: { 'Authorization': `Bearer ${token}` } });
-                if(resV.ok) v = await resV.json();
+                if(resV.ok) {
+                    const txt = await resV.text();
+                    if(txt.trim() !== '') v = JSON.parse(txt);
+                }
             } catch(e) { console.warn('Erro vínculos', e); }
             
             try {
                 const resT = await fetch(`${apiBase}/Faturamento/Titulos?dtini=${formatAPI(dtIni)}&dtfim=${formatAPI(dtFim)}`, { headers: { 'Authorization': `Bearer ${token}` } });
-                if(resT.ok) t = await resT.json();
+                if(resT.ok) {
+                    const txt = await resT.text();
+                    if(txt.trim() !== '') t = JSON.parse(txt);
+                }
             } catch(e) { console.warn('Erro títulos', e); }
             
             return { vinculos: Array.isArray(v) ? v : [], titulos: Array.isArray(t) ? t : [] };
@@ -663,13 +684,15 @@
             
             // Camada de Satélite (Esri World Imagery)
             const satBase = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18, attribution: '© Esri' });
-            // Camada de Nomes e Fronteiras (Para sobrepor ao Satélite)
-            const satLabels = L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18 });
-            // Agrupa Satelite + Nomes para não ficar uma tela cega
+            
+            // Camada de Nomes e Fronteiras Corrigida (Esri Boundaries)
+            const satLabels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18 });
+            
+            // Agrupa Satelite + Nomes 
             const satHybridLayer = L.layerGroup([satBase, satLabels]);
 
             mapInstance = L.map('heatmap', { layers: [osmLayer], zoomControl: true }).setView([-15.0, -50.0], 4);
-            L.control.layers({ "Mapa de Ruas": osmLayer, "Visão Satélite (Com Fronteiras)": satHybridLayer }).addTo(mapInstance);
+            L.control.layers({ "Mapa de Ruas": osmLayer, "Visão Satélite (Híbrido)": satHybridLayer }).addTo(mapInstance);
             
             heatmapInstance = L.heatLayer(pontos, { radius: 20, blur: 15, maxZoom: 10, gradient: { 0.2: 'blue', 0.4: 'lime', 0.6: 'yellow', 0.8: 'orange', 1.0: 'red' } }).addTo(mapInstance);
             if(pontos.length > 0) mapInstance.fitBounds(pontos.map(p => [p[0], p[1]]), { padding: [30, 30] });
@@ -810,11 +833,12 @@
         async function conectar() {
             if(isConnecting) return; isConnecting=true;
             const statusMsg = document.getElementById('statusMsg');
+            const globalMsg = document.getElementById('globalMessageArea');
             
-            // Limpa as views e coloca o loader
+            // Limpa as views e coloca o loader principal
             todosPostos = []; transacoesGlobais = [];
-            renderKpis(); renderOverviewCharts(); renderMainChart(currentPeriod); renderPriceChart(currentPeriod); renderAbcCharts(); renderStationsTable('all');
-            document.getElementById('kpiGrid').innerHTML = '<div class="loader">Conectando à TruckPag e Baixando Dados...</div>';
+            document.getElementById('kpiGrid').innerHTML = '';
+            globalMsg.innerHTML = '<div class="error-container" style="border-color: var(--brand-blue);">⏳ <b>Conectando à TruckPag...</b><br>Baixando e processando os dados de frota.</div>';
 
             try {
                 const usuario = document.getElementById('usuarioInput').value.trim();
@@ -825,11 +849,11 @@
 
                 if (!usuario || !senha) throw new Error("Usuário ou Senha não preenchidos.");
 
-                statusMsg.innerHTML = 'Gerando Autenticação MD5...'; statusMsg.className = 'status-msg';
+                statusMsg.innerHTML = 'Autenticando...'; statusMsg.className = 'status-msg';
 
                 const token = await obterToken(usuario, senha);
 
-                statusMsg.textContent = 'Autenticado! Baixando relatórios do período...';
+                statusMsg.textContent = 'Baixando relatórios...';
 
                 // Chamadas API
                 const [transacoes, pendencias] = await Promise.all([
@@ -839,40 +863,53 @@
 
                 transacoesGlobais = transacoes;
                 dadosIntegracao = pendencias;
-                todosPostos = processarPostos(transacoes, precoBaseGlobal);
-
-                // Render Geral
-                renderKpis(); renderStationsTable(currentFilter); renderOverviewCharts(); renderHeatmap(); renderIntegration('transacoes');
-                renderMainChart(currentPeriod); renderPriceChart(currentPeriod); renderPeriodTable(currentPeriod); renderAbcCharts();
                 
-                // MENSAGEM CLARA SOBRE A FALTA DE DADOS REAIS
+                // MENSAGEM CLARA SE NÃO TIVER DADOS
                 if(transacoes.length === 0) {
-                    if (pendencias.titulos.length > 0) {
-                        statusMsg.innerHTML = `⚠️ <b>Conectado à Produção!</b><br>Títulos foram carregados, mas não houve <b>nenhum abastecimento</b> processado neste intervalo exato de datas (${dtIni} a ${dtFim}). Tente um período maior.`;
-                        statusMsg.className = 'status-msg warning';
-                    } else {
-                        statusMsg.innerHTML = `⚠️ Conectado, mas <b>nenhum abastecimento</b> localizado para este período.<br><small>Tente aumentar o intervalo de datas ou verifique os fechamentos da frota.</small>`;
-                        statusMsg.className = 'status-msg warning';
-                    }
+                    globalMsg.innerHTML = `<div class="error-container" style="border-color: var(--warning);">⚠️ <b>Conexão Estabelecida com Sucesso!</b><br><br>Porém, a TruckPag informou que <b>não houve nenhum abastecimento</b> na sua frota entre ${dtIni.split('-').reverse().join('/')} e ${dtFim.split('-').reverse().join('/')}.<br><br><i>Tente aumentar o intervalo de datas no menu lateral.</i></div>`;
+                    
+                    statusMsg.innerHTML = `⚠️ Conectado (Sem abastecimentos)`;
+                    statusMsg.className = 'status-msg warning';
+                    
+                    // Renderiza gráficos vazios mas limpos
+                    renderOverviewCharts(); renderMainChart(currentPeriod); renderPriceChart(currentPeriod); renderAbcCharts(); renderStationsTable('all'); renderIntegration('transacoes');
                 } else {
-                    statusMsg.innerHTML = `✅ Sucesso:<br><b>${transacoes.length} abastecimentos carregados!</b>`;
+                    // Limpa a tela de mensagem global pois temos dados!
+                    globalMsg.innerHTML = '';
+                    todosPostos = processarPostos(transacoes, precoBaseGlobal);
+
+                    // Render Geral
+                    renderKpis(); renderStationsTable(currentFilter); renderOverviewCharts(); renderHeatmap(); renderIntegration('transacoes');
+                    renderMainChart(currentPeriod); renderPriceChart(currentPeriod); renderPeriodTable(currentPeriod); renderAbcCharts();
+                    
+                    statusMsg.innerHTML = `✅ <b>${transacoes.length} abastecimentos reais</b>`;
                     statusMsg.className = 'status-msg success';
                 }
 
             } catch (err) {
                 console.error(err);
-                statusMsg.innerHTML = `❌ Erro de Conexão: <br><small>${err.message}</small>`; 
+                statusMsg.innerHTML = `❌ Erro de Conexão`; 
                 statusMsg.className = 'status-msg error';
-                document.getElementById('kpiGrid').innerHTML = ''; // Limpa loader
+                
+                // Mostra o Erro Bem Grande na Tela
+                globalMsg.innerHTML = `<div class="error-container">❌ <b>Falha ao Conectar com a TruckPag</b><br><br>${err.message}<br><br><i>Dicas: Verifique se a senha está correta, ou pressione F12 para ver se há bloqueios de rede/CORS no GitHub Pages.</i></div>`;
+                
             } finally {
                 isConnecting = false;
             }
         }
 
         // ================================================================
-        // 6. EVENTOS E INICIALIZAÇÃO
+        // 6. EVENTOS E INICIALIZAÇÃO E PERSISTÊNCIA DE DATAS
         // ================================================================
         
+        const inInicio = document.getElementById('dataInicio');
+        const inFim = document.getElementById('dataFim');
+
+        // Salvar a Data sempre que mudar
+        inInicio.addEventListener('change', () => localStorage.setItem('cavalheiro_dtIni', inInicio.value));
+        inFim.addEventListener('change', () => localStorage.setItem('cavalheiro_dtFim', inFim.value));
+
         // Timer Ajustado para 2 minutos
         document.getElementById('autoUpdateToggle').addEventListener('change', (e) => {
             if (e.target.checked) {
@@ -885,6 +922,7 @@
         document.getElementById('btnConectar').addEventListener('click', conectar);
         
         document.getElementById('btnMock').addEventListener('click', () => {
+            document.getElementById('globalMessageArea').innerHTML = ''; // Limpa mensagens de erro
             transacoesGlobais = [];
             const pBase = parseFloat(document.getElementById('precoBaseInput').value) || 7.18;
             for(let i=0; i<150; i++) {
@@ -937,20 +975,21 @@
         // Início (Ao carregar a página)
         window.onload = () => {
             const hoje = new Date(); 
-            // Início do mês atual
-            const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
             
             const formatDataInput = (d) => {
                 const mes = String(d.getMonth() + 1).padStart(2, '0');
                 const dia = String(d.getDate()).padStart(2, '0');
                 return `${d.getFullYear()}-${mes}-${dia}`;
             };
-
-            document.getElementById('dataInicio').value = formatDataInput(inicioMes);
-            document.getElementById('dataFim').value = formatDataInput(hoje);
             
-            // Força carregar um Mock visual só pra não ficar tela branca no início
-            usarMock(); 
+            const strHoje = formatDataInput(hoje);
+
+            // Carrega a data do LocalStorage OU usa a Data de Hoje em AMBOS os campos
+            inInicio.value = localStorage.getItem('cavalheiro_dtIni') || strHoje;
+            inFim.value = localStorage.getItem('cavalheiro_dtFim') || strHoje;
+            
+            // Limpa as telas iniciais
+            document.getElementById('globalMessageArea').innerHTML = '<div class="error-container" style="border-color: var(--border-color); color: var(--text-muted);">👆 Utilize o painel lateral para conectar com a TruckPag.</div>';
         };
     </script>
 </body>
