@@ -1,788 +1,776 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-    <title>SPEC OPS: ADVANCED SAVANNA</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CavalheiroLog - Análise de Combustível</title>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Leaflet CSS e JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
+
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&display=swap');
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Oswald', sans-serif; user-select: none; -webkit-user-select: none; }
-        body { background: #000; overflow: hidden; width: 100vw; height: 100vh; touch-action: none; }
-        canvas { display: block; position: absolute; top: 0; left: 0; z-index: 1; }
-        
-        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
-        
-        /* MENU PRINCIPAL */
-        #menu-screen { position: absolute; width: 100%; height: 100%; background: radial-gradient(circle, rgba(100,50,10,0.9), rgba(0,0,0,1)); display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: auto; z-index: 50;}
-        .title { font-size: 5rem; color: #ffaa00; font-weight: 700; letter-spacing: 5px; text-shadow: 0px 5px 20px #ff3300; text-align: center; margin-bottom: 0;}
-        .subtitle { color: #fff; font-size: 1.5rem; margin-bottom: 40px; letter-spacing: 3px; opacity: 0.8;}
-        #btn-start { padding: 15px 60px; font-size: 2.5rem; background: linear-gradient(135deg, #ff6600, #992200); color: white; border: 2px solid #ffaa00; border-radius: 5px; cursor: pointer; box-shadow: 0 10px 30px rgba(255,100,0,0.6); transition: 0.1s;}
-        #btn-start:active { transform: scale(0.95); }
+        /* ===== VARIÁVEIS DE TEMA (CLARO/ESCURO) ===== */
+        :root {
+            /* Cores extraídas da logo CavalheiroLog */
+            --brand-blue: #36495d;
+            --brand-orange: #ff4500;
+            --brand-orange-hover: #e03e00;
+            
+            /* Tema Claro (Padrão) */
+            --bg-color: #eef1f5;
+            --surface-color: #ffffff;
+            --text-main: #36495d;
+            --text-muted: #6b7a8f;
+            --border-color: #eef0f3;
+            --sidebar-bg: #1e293b;
+            --sidebar-panel: rgba(255,255,255,0.06);
+            --input-bg: rgba(255,255,255,0.1);
+            --input-border: rgba(255,255,255,0.2);
+            --text-light: #ffffff;
+            --table-header: #f0f2f5;
+            --table-hover: #f8f9fb;
+            --card-shadow: 0 2px 12px rgba(0,0,0,0.04);
+            
+            /* Status Colors */
+            --success: #28a745;
+            --danger: #dc3545;
+            --warning: #f5b041;
+        }
 
-        /* HUD */
-        #hud { display: none; width: 100%; height: 100%; position: absolute; }
-        #crosshair { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 4px; height: 4px; background: #00ff00; border-radius: 50%; box-shadow: 0 0 5px black; transition: 0.1s;}
-        .ch-line { position: absolute; background: #00ff00; box-shadow: 0 0 2px black; transition: 0.1s; }
-        #ch-top { top: -14px; left: 1px; width: 2px; height: 10px; } #ch-bot { bottom: -14px; left: 1px; width: 2px; height: 10px; }
-        #ch-lef { top: 1px; left: -14px; width: 10px; height: 2px; } #ch-rig { top: 1px; right: -14px; width: 10px; height: 2px; }
-        
-        #scope-overlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle, transparent 25%, rgba(0,0,0,1) 50%); }
-        .scope-line-h { position: absolute; top: 50%; left: 0; width: 100%; height: 2px; background: rgba(255,0,0,0.7); }
-        .scope-line-v { position: absolute; top: 0; left: 50%; width: 2px; height: 100%; background: rgba(255,0,0,0.7); }
+        [data-theme="dark"] {
+            /* Tema Escuro */
+            --bg-color: #0f172a;
+            --surface-color: #1e293b;
+            --text-main: #e2e8f0;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+            --sidebar-bg: #0b1121;
+            --sidebar-panel: rgba(0,0,0,0.2);
+            --input-bg: rgba(0,0,0,0.2);
+            --input-border: #334155;
+            --text-light: #e2e8f0;
+            --table-header: #334155;
+            --table-hover: #0f172a;
+            --card-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
 
-        .hud-panel { background: rgba(0,0,0,0.6); padding: 10px 25px; border-radius: 5px; color: white; position: absolute; text-shadow: 1px 1px 2px black; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(5px);}
-        #hud-hp { top: 20px; left: 20px; border-left: 6px solid #00ff00; font-size: 1.8rem; }
-        #hud-ammo { bottom: 20px; right: 20px; border-right: 6px solid #ffaa00; text-align: right; }
-        #weapon-name { font-size: 1.2rem; color: #ffaa00; letter-spacing: 1px;}
-        #ammo-val { font-size: 3rem; font-weight: 700; line-height: 1;}
-        
-        #interact-msg { position: absolute; top: 55%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); border: 2px solid white; color: white; padding: 5px 20px; font-size: 1.2rem; display: none; border-radius: 3px;}
-        #damage-flash { position: absolute; width: 100%; height: 100%; background: darkred; opacity: 0; pointer-events: none;}
+        /* ===== RESET E BASE ===== */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Roboto, system-ui, sans-serif; }
+        body { background: var(--bg-color); color: var(--text-main); min-height: 100vh; display: flex; transition: background-color 0.3s, color 0.3s; }
 
-        /* MOBILE CONTROLS */
-        .mobile-ui { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
-        .touch-zone { position: absolute; top: 0; width: 50%; height: 100%; pointer-events: auto; }
-        #left-zone { left: 0; } #right-zone { right: 0; }
+        /* ===== SIDEBAR ===== */
+        .sidebar {
+            width: 280px; background: var(--sidebar-bg); color: var(--text-light);
+            padding: 24px 20px; display: flex; flex-direction: column; gap: 20px;
+            position: sticky; top: 0; height: 100vh; overflow-y: auto; flex-shrink: 0;
+            border-right: 4px solid var(--brand-orange); z-index: 10; transition: background-color 0.3s;
+        }
+        .sidebar .logo-area { display: flex; justify-content: center; padding-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .sidebar .logo-area img { width: 100%; max-width: 220px; object-fit: contain; }
+
+        .login-section { display: flex; flex-direction: column; gap: 12px; background: var(--sidebar-panel); padding: 16px; border-radius: 12px; border: 1px solid var(--input-border); }
+        .field { display: flex; flex-direction: column; gap: 4px; }
+        .field label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.8; font-weight: 600; }
+        .field input, .field select { background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 8px; padding: 8px 12px; color: var(--text-light); font-size: 13px; outline: none; transition: 0.2s; }
+        .field input:focus, .field select:focus { border-color: var(--brand-orange); }
+        .field select option { color: #000; }
         
-        #joystick-base { position: absolute; bottom: 40px; left: 40px; width: 130px; height: 130px; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; display: none; pointer-events: none;}
-        #joystick-stick { position: absolute; top: 50%; left: 50%; width: 60px; height: 60px; background: rgba(255,255,255,0.7); border-radius: 50%; transform: translate(-50%, -50%); }
+        .btn-group { display: flex; gap: 8px; margin-top: 4px; }
+        .btn-group button { flex: 1; padding: 10px; border: none; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; transition: 0.2s; }
+        .btn-connect { background: var(--brand-orange); color: #fff; }
+        .btn-connect:hover { background: var(--brand-orange-hover); }
+        .btn-mock { background: var(--sidebar-panel); color: var(--text-light); border: 1px solid var(--input-border); }
+        .btn-mock:hover { background: rgba(255,255,255,0.1); }
+
+        .status-msg { font-size: 12px; padding: 8px; border-radius: 8px; background: rgba(0,0,0,0.2); text-align: center; font-weight: 500; min-height: 32px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .status-msg.error { color: #ff6b6b; border: 1px solid #ff6b6b; }
+        .status-msg.success { color: #69db7c; border: 1px solid #69db7c; }
+
+        .theme-toggle { margin-top: auto; background: transparent; border: 1px solid var(--input-border); color: var(--text-light); padding: 10px; border-radius: 8px; cursor: pointer; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s; }
+        .theme-toggle:hover { background: rgba(255,255,255,0.1); }
+
+        /* ===== PAINEL PRINCIPAL ===== */
+        .main-content { flex: 1; padding: 20px 30px; overflow-y: auto; height: 100vh; }
+        .dashboard { max-width: 1400px; margin: 0 auto; }
+
+        /* ===== NAVEGAÇÃO ===== */
+        .nav-tabs { display: flex; gap: 6px; margin-bottom: 28px; background: var(--surface-color); padding: 8px; border-radius: 12px; box-shadow: var(--card-shadow); flex-wrap: wrap; border-left: 4px solid var(--brand-orange); transition: background-color 0.3s; }
+        .nav-tab { padding: 10px 20px; border: none; background: transparent; border-radius: 8px; font-weight: 600; font-size: 14px; color: var(--text-muted); cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 8px; }
+        .nav-tab:hover { background: var(--bg-color); color: var(--text-main); }
+        .nav-tab.active { background: var(--brand-blue); color: #fff; }
+        .nav-tab .badge { background: var(--brand-orange); color: #fff; font-size: 10px; font-weight: 700; border-radius: 30px; padding: 2px 10px; }
+
+        /* ===== CARDS & KPIs ===== */
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 28px; }
+        .kpi-card { background: var(--surface-color); border-radius: 12px; padding: 16px 20px; box-shadow: var(--card-shadow); border-left: 4px solid var(--brand-blue); transition: transform 0.2s; }
+        .kpi-card:hover { transform: translateY(-3px); }
+        .kpi-card .label { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-muted); }
+        .kpi-card .value { font-size: 22px; font-weight: 700; color: var(--text-main); margin-top: 4px; }
+        .kpi-card .sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+        .kpi-card.highlight { background: var(--brand-blue); border-left-color: var(--brand-orange); }
+        .kpi-card.highlight .label, .kpi-card.highlight .value, .kpi-card.highlight .sub { color: #fff; }
+
+        .class-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
+        .class-card { background: var(--surface-color); border-radius: 12px; padding: 18px; box-shadow: var(--card-shadow); border-top: 4px solid var(--success); }
+        .class-card.class-B { border-top-color: var(--warning); }
+        .class-card.class-C { border-top-color: var(--danger); }
+        .class-card .title { font-size: 15px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px; }
+        .class-card .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+        .class-card .stats .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; }
+        .class-card .stats .value { font-size: 14px; font-weight: 700; color: var(--text-main); }
+
+        /* ===== GRÁFICOS ===== */
+        .tab-content { display: none; animation: fadeIn 0.3s ease; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .charts-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 28px; }
+        .charts-grid.one-col { grid-template-columns: 1fr; }
+        .chart-box { background: var(--surface-color); border-radius: 12px; padding: 20px; box-shadow: var(--card-shadow); }
+        .chart-box h3 { font-size: 15px; font-weight: 600; color: var(--text-main); margin-bottom: 16px; }
+        .chart-container { position: relative; height: 320px; }
+        .chart-container.map { height: 500px; border-radius: 8px; overflow: hidden; position: relative; }
+
+        /* Legenda do Mapa */
+        .map-legend { position: absolute; bottom: 20px; left: 20px; background: rgba(255,255,255,0.9); padding: 10px 15px; border-radius: 8px; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.2); pointer-events: none; }
+        [data-theme="dark"] .map-legend { background: rgba(30,41,59,0.9); color: #fff; }
+        .legend-title { font-size: 12px; font-weight: bold; margin-bottom: 5px; text-align: center; }
+        .legend-gradient { width: 150px; height: 12px; background: linear-gradient(to right, blue, lime, yellow, orange, red); border-radius: 4px; }
+        .legend-labels { display: flex; justify-content: space-between; font-size: 10px; margin-top: 4px; font-weight: bold; }
+
+        /* ===== TABELAS ===== */
+        .table-wrap { background: var(--surface-color); border-radius: 12px; padding: 20px; box-shadow: var(--card-shadow); overflow-x: auto; margin-bottom: 28px; }
+        .table-wrap h3 { font-size: 15px; font-weight: 600; color: var(--text-main); margin-bottom: 16px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        thead { background: var(--table-header); position: sticky; top: 0; z-index: 5; }
+        th { padding: 12px; font-weight: 600; color: var(--text-main); border-bottom: 2px solid var(--border-color); white-space: nowrap; font-size: 12px; text-transform: uppercase; }
+        td { padding: 10px 12px; border-bottom: 1px solid var(--border-color); color: var(--text-main); }
+        tr:hover td { background: var(--table-hover); }
+
+        .text-left { text-align: left; } .text-right { text-align: right; } .text-center { text-align: center; }
+        .text-green { color: var(--success); font-weight: 700; }
+        .text-danger { color: var(--danger); font-weight: 700; }
+        .badge-abc { padding: 2px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; color: #fff; }
+        .badge-abc.A { background: var(--success); } .badge-abc.B { background: var(--warning); } .badge-abc.C { background: var(--danger); }
         
-        .action-btn { position: absolute; background: rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; color: white; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; pointer-events: auto; }
-        .action-btn:active { background: rgba(255,100,0,0.6); transform: scale(0.9); }
-        
-        #btn-shoot { bottom: 40px; right: 40px; width: 90px; height: 90px; background: rgba(255,51,0,0.4); border-color: #ff3300;}
-        #btn-aim { bottom: 150px; right: 30px; width: 65px; height: 65px; background: rgba(0,150,255,0.4);}
-        #btn-jump { bottom: 50px; right: 150px; width: 60px; height: 60px; }
-        #btn-interact { top: 20px; right: 90px; width: 60px; height: 60px; border-radius: 5px; background: rgba(0,255,0,0.3);}
-        #btn-drop { top: 20px; right: 20px; width: 60px; height: 60px; border-radius: 5px; background: rgba(255,0,0,0.3);}
+        .filter-bar { display: flex; gap: 10px; margin-bottom: 20px; align-items: center; }
+        .period-btn { padding: 6px 16px; border: 1px solid var(--border-color); border-radius: 20px; background: var(--surface-color); color: var(--text-main); font-size: 13px; cursor: pointer; transition: 0.2s; font-weight: 600;}
+        .period-btn:hover { background: var(--bg-color); }
+        .period-btn.active { background: var(--brand-blue); color: #fff; border-color: var(--brand-blue); }
+
+        .total-row td { background: var(--table-header) !important; font-weight: bold; border-top: 2px solid var(--brand-blue); }
     </style>
 </head>
 <body>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-
-    <div id="ui-layer">
-        <div id="damage-flash"></div>
-        
-        <div id="menu-screen">
-            <h1 class="title">SAVANNA<br>STRIKE</h1>
-            <p class="subtitle">ENGINE 2.0 ADVANCED</p>
-            <button id="btn-start">INICIAR CAÇADA</button>
+    <!-- ===== SIDEBAR ===== -->
+    <div class="sidebar">
+        <div class="logo-area">
+            <!-- Certifique-se de que a logo está no mesmo diretório -->
+            <img src="cavalheiro-logistics.png" alt="Cavalheiro Log">
         </div>
 
-        <div id="hud">
-            <div id="scope-overlay"><div class="scope-line-h"></div><div class="scope-line-v"></div></div>
-            <div id="crosshair">
-                <div class="ch-line" id="ch-top"></div><div class="ch-line" id="ch-bot"></div>
-                <div class="ch-line" id="ch-lef"></div><div class="ch-line" id="ch-rig"></div>
+        <div class="login-section">
+            <div class="field">
+                <label>🌐 Ambiente (API TruckPag)</label>
+                <select id="envSelect">
+                    <option value="apihml" selected>Homologação</option>
+                    <option value="apiprd">Produção</option>
+                </select>
             </div>
-            <div id="interact-msg">[E] Pegar Arma</div>
             
-            <div class="hud-panel" id="hud-hp">VIDA: <span id="hp-val">100</span></div>
-            <div class="hud-panel" id="hud-ammo">
-                <div id="weapon-name">GLOCK 19</div>
-                <div id="ammo-val">15</div>
+            <!-- Campo de Token Direto Adicionado -->
+            <div class="field" title="Insira o token direto para evitar falhas de autenticação/CORS">
+                <label>🔑 Token de Integração</label>
+                <input type="text" id="tokenInput" value="304|NkyqZedQlyrTLjltQj9tU8sK8YjgvReDs4euHJBD" placeholder="Cole o token aqui">
             </div>
 
-            <div class="mobile-ui" id="mobile-ui">
-                <div class="touch-zone" id="left-zone"></div>
-                <div class="touch-zone" id="right-zone"></div>
-                <div id="joystick-base"><div id="joystick-stick"></div></div>
-                <div id="btn-shoot" class="action-btn">Atirar</div>
-                <div id="btn-aim" class="action-btn">Mirar</div>
-                <div id="btn-jump" class="action-btn">Pular</div>
-                <div id="btn-interact" class="action-btn">Pegar</div>
-                <div id="btn-drop" class="action-btn">Soltar</div>
+            <div class="field">
+                <label>📅 Data Inicial</label>
+                <input type="date" id="dataInicio">
             </div>
+            <div class="field">
+                <label>📅 Data Final</label>
+                <input type="date" id="dataFim">
+            </div>
+            <div class="field">
+                <label>💰 Preço Base Alvo (R$)</label>
+                <input type="number" id="precoBaseInput" value="7.18" step="0.01">
+            </div>
+            
+            <div class="btn-group">
+                <button class="btn-connect" id="btnConectar">Conectar API</button>
+                <button class="btn-mock" id="btnMock">Usar Mock</button>
+            </div>
+            
+            <div class="status-msg" id="statusMsg">Pronto para conectar</div>
+        </div>
+
+        <button class="theme-toggle" id="themeToggle">
+            🌙 Modo Escuro
+        </button>
+    </div>
+
+    <!-- ===== PAINEL PRINCIPAL ===== -->
+    <div class="main-content">
+        <div class="dashboard">
+
+            <!-- NAVEGAÇÃO -->
+            <div class="nav-tabs" id="navTabs">
+                <button class="nav-tab active" data-tab="tab-overview">📊 Visão Geral</button>
+                <button class="nav-tab" data-tab="tab-temporal">📈 Evolução Temporal</button>
+                <button class="nav-tab" data-tab="tab-abc">📉 Curva ABC</button>
+                <button class="nav-tab" data-tab="tab-stations">🏢 Análise de Postos</button>
+                <button class="nav-tab" data-tab="tab-heatmap">🔥 Mapa de Calor</button>
+                <button class="nav-tab" data-tab="tab-integration">🔗 Pendências API</button>
+            </div>
+
+            <!-- KPIs -->
+            <div class="kpi-grid" id="kpiGrid">
+                <!-- Preenchido via JS -->
+            </div>
+
+            <!-- RESUMO CLASSE -->
+            <div class="class-summary" id="classSummary"></div>
+
+            <!-- ABAS -->
+            <div id="tab-overview" class="tab-content active">
+                <div class="charts-grid one-col">
+                    <div class="chart-box">
+                        <h3>🏆 Top 10 Postos (Maior Volume)</h3>
+                        <div class="chart-container"><canvas id="topStationsChart"></canvas></div>
+                    </div>
+                </div>
+                <div class="charts-grid">
+                    <div class="chart-box">
+                        <h3>💰 Top 10 Postos (Maior Economia)</h3>
+                        <div class="chart-container"><canvas id="topSavingsChart"></canvas></div>
+                    </div>
+                    <div class="chart-box">
+                        <h3>📊 Postos por Classificação ABC</h3>
+                        <div class="chart-container"><canvas id="classCountChart"></canvas></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-temporal" class="tab-content">
+                <div class="filter-bar">
+                    <span style="font-weight: 600; color: var(--text-main); font-size: 13px;">Agrupar por:</span>
+                    <button class="period-btn active" data-period="weekly">Semana</button>
+                    <button class="period-btn" data-period="monthly">Mês</button>
+                </div>
+                <div class="charts-grid">
+                    <div class="chart-box">
+                        <h3>📊 Evolução de Volume (L)</h3>
+                        <div class="chart-container"><canvas id="mainChart"></canvas></div>
+                    </div>
+                    <div class="chart-box">
+                        <h3>📉 Evolução do Preço Médio Pago</h3>
+                        <div class="chart-container"><canvas id="priceChart"></canvas></div>
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <h3>📋 Detalhamento Financeiro do Período</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="text-left">Período</th>
+                                <th class="text-right">Volume (L)</th>
+                                <th class="text-right">Preço Médio (R$)</th>
+                                <th class="text-right">Custo Total (R$)</th>
+                                <th class="text-right">Economia Realizada (R$)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="periodTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="tab-abc" class="tab-content">
+                <div class="charts-grid">
+                    <div class="chart-box">
+                        <h3>📊 Curva ABC de Concentração de Gastos</h3>
+                        <div class="chart-container"><canvas id="abcChart"></canvas></div>
+                    </div>
+                    <div class="chart-box">
+                        <h3>📊 Participação de Volume por Classe</h3>
+                        <div class="chart-container"><canvas id="abcPieChart"></canvas></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-stations" class="tab-content">
+                <div class="filter-bar">
+                    <span style="font-weight: 600; color: var(--text-main); font-size: 13px;">Filtrar Classe:</span>
+                    <button class="period-btn active" data-filter="all">Todas</button>
+                    <button class="period-btn" data-filter="A">Classe A</button>
+                    <button class="period-btn" data-filter="B">Classe B</button>
+                    <button class="period-btn" data-filter="C">Classe C</button>
+                    <span style="margin-left:auto; font-size:12px; color:var(--text-muted);" id="stationCount"></span>
+                </div>
+                <div class="table-wrap">
+                    <h3>📋 Detalhamento Analítico por Posto</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="text-left">Rank</th>
+                                <th class="text-left">Posto Atendido</th>
+                                <th class="text-left">Cidade/UF</th>
+                                <th class="text-center">Caminhões</th>
+                                <th class="text-right">Volume (L)</th>
+                                <th class="text-right">Preço Médio</th>
+                                <th class="text-right">Custo Total (R$)</th>
+                                <th class="text-right">Economia (R$)</th>
+                                <th class="text-center">Classe</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stationsTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="tab-heatmap" class="tab-content">
+                <div class="charts-grid one-col">
+                    <div class="chart-box">
+                        <h3>🔥 Densidade de Abastecimento (Rotas & Regiões)</h3>
+                        <div class="chart-container map">
+                            <div id="heatmap" style="height:100%;width:100%;"></div>
+                            <!-- Legenda do Mapa -->
+                            <div class="map-legend">
+                                <div class="legend-title">Volume de Abastecimento</div>
+                                <div class="legend-gradient"></div>
+                                <div class="legend-labels">
+                                    <span>Baixo</span>
+                                    <span>Alto</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <h3>📊 Resumo de Consumo por Estado (UF)</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="text-left">Estado</th>
+                                <th class="text-right">Volume Total (L)</th>
+                                <th class="text-right">Representatividade</th>
+                                <th class="text-right">Preço Médio (R$)</th>
+                                <th class="text-right">Economia Total (R$)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stateTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="tab-integration" class="tab-content">
+                <div class="filter-bar">
+                    <span style="font-weight: 600; color: var(--text-main); font-size: 13px;">Visão:</span>
+                    <button class="period-btn active" data-integration="transacoes">Transações Soltas</button>
+                    <button class="period-btn" data-integration="vinculos">Vínculos Faltantes</button>
+                    <button class="period-btn" data-integration="titulos">Títulos Pendentes</button>
+                </div>
+                <div class="table-wrap">
+                    <h3 id="integrationTitle">📋 Dados Pendentes de Integração ERP</h3>
+                    <table>
+                        <thead id="integrationHead"></thead>
+                        <tbody id="integrationBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
         </div>
     </div>
 
     <script>
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        // ================================================================
+        // 0. TEMA E UI
+        // ================================================================
+        const themeToggle = document.getElementById('themeToggle');
+        let isDarkMode = false;
         
-        // ==========================================
-        // DADOS DAS ARMAS
-        // ==========================================
-        const WEAPONS = {
-            faca:    { name: "FACA DE COMBATE", type: "melee", dmg: 40, mag: '∞', delay: 400, zoom: 75, recoil: 0 },
-            pistola: { name: "GLOCK 19", type: "hitscan", dmg: 25, mag: 15, delay: 200, zoom: 60, recoil: 0.02 },
-            ak47:    { name: "AK-47 ASSAULT", type: "hitscan", dmg: 40, mag: 30, delay: 100, zoom: 55, recoil: 0.04 },
-            shotgun: { name: "SPAS-12", type: "shotgun", dmg: 15, pellets: 8, mag: 8, delay: 800, zoom: 65, recoil: 0.08 },
-            sniper:  { name: "AWM SNIPER", type: "hitscan", dmg: 150, mag: 5, delay: 1500, zoom: 15, recoil: 0.1, hasScope: true }
-        };
-
-        let scene, camera, renderer;
-        let colliders = [], groundItems = [], animals = [], particles = [], grassBlades = [];
-        
-        let player = {
-            pos: new THREE.Vector3(0, 2, 0), vel: new THREE.Vector3(),
-            height: 1.8, radius: 0.6, speed: 7, hp: 100, onGround: false,
-            weapon: 'pistola', ammo: 15, lastShot: 0, isAiming: false, recoilPitch: 0
-        };
-
-        const raycaster = new THREE.Raycaster();
-        const centerScreen = new THREE.Vector2(0, 0);
-
-        // ==========================================
-        // SISTEMA DE MATERIAIS DE ALTA DEFINIÇÃO
-        // ==========================================
-        function generateTex(type) {
-            const canvas = document.createElement('canvas');
-            canvas.width = 512; canvas.height = 512;
-            const ctx = canvas.getContext('2d');
+        themeToggle.addEventListener('click', () => {
+            isDarkMode = !isDarkMode;
+            document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
+            themeToggle.textContent = isDarkMode ? '☀️ Modo Claro' : '🌙 Modo Escuro';
             
-            if (type === 'dirt') {
-                ctx.fillStyle = '#9e7b4f'; ctx.fillRect(0,0,512,512);
-                for(let i=0; i<20000; i++) {
-                    ctx.fillStyle = Math.random()>0.5 ? '#7a5d38' : '#b89463';
-                    ctx.fillRect(Math.random()*512, Math.random()*512, 2, 2);
-                }
-            } else if (type === 'bark') { 
-                ctx.fillStyle = '#4a3320'; ctx.fillRect(0,0,512,512);
-                ctx.fillStyle = '#2b1c10';
-                for(let i=0; i<300; i++) {
-                    ctx.fillRect(Math.random()*512, 0, Math.random()*8 + 2, 512);
-                }
-            } else if (type === 'lion') {
-                ctx.fillStyle = '#d49a37'; ctx.fillRect(0,0,512,512);
-                for(let i=0; i<3000; i++) {
-                    ctx.fillStyle = '#b58026'; ctx.fillRect(Math.random()*512, Math.random()*512, 15, 3);
-                }
-            } else if (type === 'gazelle') {
-                ctx.fillStyle = '#c49a6c'; ctx.fillRect(0,0,512,512);
-                ctx.fillStyle = '#ffffff'; ctx.fillRect(0,256,512,256);
-            }
-            const tex = new THREE.CanvasTexture(canvas);
-            tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-            return tex;
-        }
-
-        const matDirt = new THREE.MeshLambertMaterial({ map: generateTex('dirt') });
-        const matBark = new THREE.MeshLambertMaterial({ map: generateTex('bark') });
-        const matLeaves = new THREE.MeshLambertMaterial({ color: 0x4b6b28, flatShading: true }); // Estilo Low Poly para folhas
-        
-        const matLion = new THREE.MeshLambertMaterial({ map: generateTex('lion') });
-        const matLionMane = new THREE.MeshLambertMaterial({ color: 0x4a2a10 });
-        const matGazelle = new THREE.MeshLambertMaterial({ map: generateTex('gazelle') });
-
-        const matGunMetal = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.3, metalness: 0.8 });
-        const matGunWood = new THREE.MeshStandardMaterial({ color: 0x5c2e16, roughness: 0.9 });
-        const matGunDark = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.5 });
-        const matGlass = new THREE.MeshStandardMaterial({ color: 0x00aaff, roughness: 0.1, metalness: 1.0 });
-
-        // ==========================================
-        // CONSTRUTOR 3D COMPLEXO DE ARMAS
-        // ==========================================
-        function addP(group, geo, mat, x, y, z, rx=0, ry=0, rz=0) {
-            const mesh = new THREE.Mesh(geo, mat);
-            mesh.position.set(x, y, z);
-            mesh.rotation.set(rx, ry, rz);
-            mesh.castShadow = true;
-            group.add(mesh);
-            return mesh;
-        }
-
-        function createWeaponMesh(type) {
-            const group = new THREE.Group();
-            if (type === 'ak47') {
-                addP(group, new THREE.CylinderGeometry(0.015, 0.015, 0.7, 8), matGunMetal, 0, 0.05, -0.2, Math.PI/2); // Cano
-                addP(group, new THREE.BoxGeometry(0.04, 0.12, 0.4), matGunMetal, 0, 0, 0.1); // Corpo
-                addP(group, new THREE.BoxGeometry(0.03, 0.12, 0.25), matGunWood, 0, -0.05, 0.38, -0.1); // Coronha
-                addP(group, new THREE.BoxGeometry(0.03, 0.2, 0.08), matGunMetal, 0, -0.15, 0.05, 0.2); // Pente
-                addP(group, new THREE.CylinderGeometry(0.03, 0.03, 0.25, 8), matGunWood, 0, 0.03, -0.15, Math.PI/2); // Handguard
-                addP(group, new THREE.BoxGeometry(0.01, 0.04, 0.02), matGunMetal, 0, 0.08, -0.5); // Mira ponta
-                addP(group, new THREE.BoxGeometry(0.01, 0.04, 0.02), matGunMetal, 0, 0.08, 0); // Mira tras
-            } else if (type === 'sniper') {
-                addP(group, new THREE.CylinderGeometry(0.012, 0.015, 1.2, 8), matGunMetal, 0, 0.05, -0.4, Math.PI/2); // Cano
-                addP(group, new THREE.BoxGeometry(0.05, 0.1, 0.8), matGunWood, 0, 0, 0.1); // Corpo
-                addP(group, new THREE.BoxGeometry(0.04, 0.15, 0.2), matGunWood, 0, -0.05, 0.4); // Coronha
-                addP(group, new THREE.CylinderGeometry(0.025, 0.025, 0.35, 12), matGunDark, 0, 0.12, 0.05, Math.PI/2); // Luneta tubo
-                addP(group, new THREE.CylinderGeometry(0.026, 0.026, 0.02, 12), matGlass, 0, 0.12, -0.12, Math.PI/2); // Lente
-                addP(group, new THREE.CylinderGeometry(0.01, 0.01, 0.25, 4), matGunMetal, -0.05, -0.1, -0.4, 0.4, 0, 0.2); // Bipé
-                addP(group, new THREE.CylinderGeometry(0.01, 0.01, 0.25, 4), matGunMetal, 0.05, -0.1, -0.4, 0.4, 0, -0.2);
-            } else if (type === 'shotgun') {
-                addP(group, new THREE.CylinderGeometry(0.02, 0.02, 0.8, 8), matGunMetal, 0, 0.05, -0.2, Math.PI/2); // Cano
-                addP(group, new THREE.CylinderGeometry(0.015, 0.015, 0.7, 8), matGunMetal, 0, 0.01, -0.2, Math.PI/2); // Tubo
-                addP(group, new THREE.CylinderGeometry(0.025, 0.025, 0.2, 8), matGunWood, 0, 0.01, -0.2, Math.PI/2); // Pump
-                addP(group, new THREE.BoxGeometry(0.05, 0.12, 0.3), matGunDark, 0, 0, 0.2); // Corpo
-                addP(group, new THREE.BoxGeometry(0.03, 0.15, 0.06), matGunDark, 0, -0.1, 0.3, 0.3); // Grip
-            } else { // Pistola
-                addP(group, new THREE.BoxGeometry(0.035, 0.06, 0.25), matGunMetal, 0, 0.05, 0); // Slide
-                addP(group, new THREE.BoxGeometry(0.03, 0.12, 0.07), matGunDark, 0, -0.04, 0.08, 0.15); // Grip
-            }
-            return group;
-        }
-
-        let gunGroup = new THREE.Group();
-        let currentGunMesh = null;
-        let muzzleFlash = new THREE.PointLight(0xffddaa, 0, 15);
-        
-        function equipWeapon(weaponId, ammoCount) {
-            player.weapon = weaponId;
-            player.ammo = ammoCount !== undefined ? ammoCount : WEAPONS[weaponId].mag;
+            // Atualizar cores globais do Chart.js
+            Chart.defaults.color = isDarkMode ? '#94a3b8' : '#6b7a8f';
+            Chart.defaults.scale.grid.color = isDarkMode ? '#334155' : '#eef0f3';
             
-            if(currentGunMesh) gunGroup.remove(currentGunMesh);
-            currentGunMesh = createWeaponMesh(weaponId);
-            
-            currentGunMesh.position.set(0.3, -0.3, -0.6); // FPS Pos
-            gunGroup.add(currentGunMesh);
-            
-            muzzleFlash.position.set(0, 0.05, -0.8);
-            currentGunMesh.add(muzzleFlash);
+            // Re-renderizar gráficos para aplicar novo tema
+            if (todosPostos.length > 0) {
+                renderOverviewCharts(); renderMainChart(currentPeriod); renderPriceChart(currentPeriod); renderAbcCharts();
+            }
+        });
 
-            toggleAim(false);
-            updateHUD();
+        // Configuração Inicial Chart.js
+        Chart.defaults.font.family = "'Segoe UI', Roboto, sans-serif";
+        Chart.defaults.color = '#6b7a8f';
+        Chart.defaults.scale.grid.color = '#eef0f3';
+
+        // ================================================================
+        // 1. CONFIGURAÇÃO E AUTENTICAÇÃO (TRUCKPAG API)
+        // ================================================================
+        function getApiBase() {
+            return document.getElementById('envSelect').value === 'apihml' 
+                ? 'https://apihomo.truckpag.com.br' 
+                : 'https://api.truckpag.com.br';
         }
 
-        // ==========================================
-        // GERAÇÃO DE NATUREZA E VENTO
-        // ==========================================
-        let leavesParticles = [];
+        // Converte datas YYYY-MM-DD para YYYYMMDD (Exigido pelos endpoints da API)
+        function formatAPI(dateStr) { return dateStr.replace(/-/g, ''); }
 
-        function createAcaciaTree(x, z) {
-            const h = 5 + Math.random() * 5;
-            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.8, h, 7), matBark);
-            trunk.position.set(x, h/2, z);
-            trunk.castShadow = true; scene.add(trunk);
+        let transacoesGlobais = [], todosPostos = [], dadosIntegracao = { transacoes: [], vinculos: [], titulos: [] };
+        let precoBaseGlobal = 7.18, currentPeriod = 'weekly', currentFilter = 'all', currentIntegration = 'transacoes';
+        let mapInstance = null, heatmapInstance = null, layerControl = null;
+
+        // FETCH TRANSAÇÕES
+        async function fetchTransacoes(token, dtIni, dtFim) {
+            const apiBase = getApiBase();
+            const url = `${apiBase}/Transacoes?dtini=${formatAPI(dtIni)}&dtfim=${formatAPI(dtFim)}&todas=S`;
             
-            // Copa da árvore em formato de guarda-chuva realista
-            const canopy = new THREE.Group();
-            for(let i=0; i<5; i++) {
-                const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(2.5 + Math.random(), 0), matLeaves);
-                leaf.position.set((Math.random()-0.5)*4, (Math.random()-0.5)*2, (Math.random()-0.5)*4);
-                leaf.scale.y = 0.5; // Achata a copa
-                leaf.castShadow = true;
-                canopy.add(leaf);
-            }
-            canopy.position.set(x, h, z);
-            scene.add(canopy);
-            colliders.push(new THREE.Box3().setFromObject(trunk));
-        }
-
-        function createGrass() {
-            // Sistema de Grama em Instância (Alta Performance)
-            const count = 10000;
-            const geo = new THREE.PlaneGeometry(0.3, 1.0);
-            geo.translate(0, 0.5, 0); // Pivô na base
-            const mat = new THREE.MeshLambertMaterial({ color: 0x7a6a38, side: THREE.DoubleSide, transparent: true });
+            const response = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+            if (!response.ok) throw new Error(`HTTP ${response.status} - Falha em /Transacoes`);
             
-            const instMesh = new THREE.InstancedMesh(geo, mat, count);
-            const dummy = new THREE.Object3D();
+            const raw = await response.json();
+            const result = [];
             
-            for(let i=0; i<count; i++) {
-                dummy.position.set((Math.random()-0.5)*200, 0, (Math.random()-0.5)*200);
-                dummy.rotation.y = Math.random() * Math.PI;
-                dummy.scale.setScalar(0.5 + Math.random()*0.8);
-                dummy.updateMatrix();
-                instMesh.setMatrixAt(i, dummy.matrix);
-            }
-            scene.add(instMesh);
-            return instMesh;
-        }
-
-        function spawnGroundItem(id, x, z) {
-            const mesh = createWeaponMesh(id);
-            mesh.position.set(x, 0.2, z);
-            mesh.rotation.x = Math.PI / 2;
-            mesh.rotation.y = Math.random() * Math.PI;
-            scene.add(mesh);
-            groundItems.push({ mesh: mesh, id: id, ammo: WEAPONS[id].mag });
-        }
-
-        // ==========================================
-        // IA E ANATOMIA COMPLEXA DOS ANIMAIS
-        // ==========================================
-        function createHealthBar() {
-            const canvas = document.createElement('canvas');
-            canvas.width = 128; canvas.height = 24;
-            return new THREE.CanvasTexture(canvas);
-        }
-
-        class Animal {
-            constructor(type, x, z) {
-                this.type = type;
-                this.state = 'idle';
-                this.mesh = new THREE.Group();
-                this.timeOff = Math.random() * 100;
-                
-                if (type === 'lion') {
-                    this.hp = 150; this.maxHp = 150; this.speed = 9; this.aggro = 30;
-                    this.buildLion();
-                } else {
-                    this.hp = 50; this.maxHp = 50; this.speed = 14; this.aggro = 40;
-                    this.buildGazelle();
-                }
-                
-                this.mesh.position.set(x, 0, z);
-                scene.add(this.mesh);
-
-                this.hpTex = createHealthBar();
-                const spriteMat = new THREE.SpriteMaterial({ map: this.hpTex, depthTest: false });
-                this.hpSprite = new THREE.Sprite(spriteMat);
-                this.hpSprite.scale.set(2.5, 0.5, 1);
-                this.hpSprite.position.y = 2.5;
-                this.mesh.add(this.hpSprite);
-                this.updateHP();
-
-                this.hitbox = new THREE.Box3();
-            }
-
-            buildLion() {
-                // Corpo Cilíndrico
-                const b = addP(this.mesh, new THREE.CylinderGeometry(0.5, 0.4, 2, 8), matLion, 0, 1.2, 0, Math.PI/2);
-                // Juba e Cabeça
-                addP(this.mesh, new THREE.DodecahedronGeometry(0.7, 0), matLionMane, 0, 1.4, 1.0);
-                addP(this.mesh, new THREE.SphereGeometry(0.4, 8, 8), matLion, 0, 1.4, 1.4);
-                // Focinho
-                addP(this.mesh, new THREE.BoxGeometry(0.3, 0.3, 0.4), matLion, 0, 1.3, 1.7);
-                // Rabo
-                this.tail = addP(this.mesh, new THREE.CylinderGeometry(0.05, 0.05, 1), matLion, 0, 1.2, -1.2, Math.PI/4);
-                
-                this.legs = [];
-                for(let i=0; i<4; i++) {
-                    const leg = new THREE.Group(); leg.position.set(i%2===0?-0.4:0.4, 1.0, i<2?0.8:-0.8);
-                    addP(leg, new THREE.CylinderGeometry(0.15, 0.1, 1), matLion, 0, -0.5, 0);
-                    this.legs.push(leg); this.mesh.add(leg);
-                }
-            }
-
-            buildGazelle() {
-                const b = addP(this.mesh, new THREE.CylinderGeometry(0.35, 0.3, 1.2, 8), matGazelle, 0, 1.4, 0, Math.PI/2);
-                const neck = addP(this.mesh, new THREE.CylinderGeometry(0.15, 0.2, 0.8), matGazelle, 0, 1.8, 0.6, Math.PI/6);
-                addP(this.mesh, new THREE.BoxGeometry(0.2, 0.3, 0.5), matGazelle, 0, 2.2, 0.8); // Cabeça
-                addP(this.mesh, new THREE.CylinderGeometry(0.02, 0.05, 0.5), matGunDark, -0.08, 2.5, 0.7, -0.2); // Chifre
-                addP(this.mesh, new THREE.CylinderGeometry(0.02, 0.05, 0.5), matGunDark, 0.08, 2.5, 0.7, -0.2);
-                
-                this.legs = [];
-                for(let i=0; i<4; i++) {
-                    const leg = new THREE.Group(); leg.position.set(i%2===0?-0.2:0.2, 1.0, i<2?0.5:-0.5);
-                    addP(leg, new THREE.CylinderGeometry(0.08, 0.05, 1.2), matGazelle, 0, -0.5, 0);
-                    this.legs.push(leg); this.mesh.add(leg);
-                }
-            }
-
-            updateHP() {
-                const ctx = this.hpTex.image.getContext('2d');
-                ctx.clearRect(0,0,128,24);
-                ctx.fillStyle = '#ff0000'; ctx.fillRect(0,0,128,24);
-                ctx.fillStyle = '#00ff00'; ctx.fillRect(0,0, 128 * Math.max(0, this.hp/this.maxHp), 24);
-                ctx.strokeStyle = 'black'; ctx.lineWidth = 2; ctx.strokeRect(0,0,128,24);
-                this.hpTex.needsUpdate = true;
-            }
-
-            takeDamage(dmg) {
-                if(this.state === 'dead') return;
-                this.hp -= dmg;
-                this.updateHP();
-                createVFX(this.mesh.position.clone().add(new THREE.Vector3(0,1,0)), 0xaa0000, 15); // Sangue
-
-                if (this.hp <= 0) {
-                    this.state = 'dead';
-                    this.mesh.rotation.z = Math.PI/2; 
-                    this.mesh.position.y = 0.3;
-                    this.hpSprite.visible = false;
-                } else {
-                    this.state = this.type === 'lion' ? 'chase' : 'flee';
-                }
-            }
-
-            update(dt, time) {
-                if(this.state === 'dead') return;
-                
-                this.hitbox.setFromObject(this.mesh);
-                const dist = this.mesh.position.distanceTo(player.pos);
-                let moving = false;
-
-                if (this.type === 'lion') {
-                    if (dist < this.aggro && this.state !== 'chase') this.state = 'chase';
-                    
-                    if (this.state === 'chase') {
-                        this.mesh.lookAt(player.pos.x, this.mesh.position.y, player.pos.z);
-                        if (dist > 3) { this.mesh.translateZ(this.speed * dt); moving = true; } 
-                        else if(Math.random() < 0.05) {
-                            player.hp -= 20; showDamage();
-                        }
-                    } else { // Roam
-                        this.mesh.rotation.y += Math.sin(time + this.timeOff) * 0.01;
-                        this.mesh.translateZ(this.speed * 0.2 * dt); moving = true;
+            if (raw && raw.Transacoes && Array.isArray(raw.Transacoes)) {
+                raw.Transacoes.forEach(t => {
+                    if (t.Servico === 'Abastecimento') {
+                        const volume = parseFloat(t.Litragem) || 0;
+                        const valorTotal = parseFloat(t.Valor) || 0;
+                        result.push({
+                            estabelecimento: t.NomeFantasiaPosto || t.RazaoSocialPosto || 'Não informado',
+                            cidade: t.CidadePosto || '',
+                            uf: t.UFPosto || '',
+                            volume: volume,
+                            valor_litro: volume > 0 ? (valorTotal / volume) : 0,
+                            valor_total: valorTotal,
+                            data: t.DataTransacao || '',
+                            placa: t.Placa || 'ND',
+                            IdTransacao: t.Transacao || '-',
+                            Valor: valorTotal
+                        });
                     }
-                } else {
-                    if (dist < this.aggro) this.state = 'flee';
-                    if (this.state === 'flee') {
-                        const dir = this.mesh.position.clone().sub(player.pos).normalize();
-                        const t = this.mesh.position.clone().add(dir);
-                        this.mesh.lookAt(t.x, this.mesh.position.y, t.z);
-                        this.mesh.translateZ(this.speed * dt); moving = true;
-                    } else {
-                        if(Math.random()<0.01) this.mesh.rotation.y += Math.random()*2-1;
-                        this.mesh.translateZ(this.speed * 0.1 * dt); moving = true;
-                    }
-                }
-
-                // Animação Realista (Senoide)
-                if (moving) {
-                    const ws = this.state === 'chase' || this.state === 'flee' ? 18 : 6;
-                    const swing = Math.sin((time + this.timeOff) * ws) * 0.6;
-                    this.legs[0].rotation.x = swing; this.legs[1].rotation.x = -swing;
-                    this.legs[2].rotation.x = -swing; this.legs[3].rotation.x = swing;
-                    if(this.tail) this.tail.rotation.y = Math.sin(time * 5) * 0.3; // Rabo balança
-                }
+                });
             }
+            return result;
         }
 
-        // ==========================================
-        // VFX: BALAS, SANGUE E POEIRA
-        // ==========================================
-        function createVFX(pos, color, count) {
-            const geo = new THREE.BoxGeometry(0.08, 0.08, 0.08);
-            const mat = new THREE.MeshBasicMaterial({color: color});
-            for(let i=0; i<count; i++) {
-                const m = new THREE.Mesh(geo, mat); m.position.copy(pos);
-                scene.add(m);
-                particles.push({ mesh: m, vel: new THREE.Vector3((Math.random()-0.5)*15, Math.random()*15, (Math.random()-0.5)*15), life: 1.0 });
-            }
-        }
-
-        function createTracer(start, end) {
-            const geo = new THREE.BufferGeometry().setFromPoints([start, end]);
-            const mat = new THREE.LineBasicMaterial({ color: 0xffddaa, transparent: true, opacity: 0.8 });
-            const line = new THREE.Line(geo, mat); scene.add(line);
-            setTimeout(() => scene.remove(line), 40);
-        }
-
-        function showDamage() {
-            const f = document.getElementById('damage-flash');
-            f.style.opacity = 0.6; setTimeout(() => f.style.opacity = 0, 150);
-            updateHUD();
-        }
-
-        // ==========================================
-        // INICIALIZAÇÃO
-        // ==========================================
-        let grassInst;
-        function initGame() {
-            document.getElementById('menu-screen').style.display = 'none';
-            document.getElementById('hud').style.display = 'block';
-            if (isMobile) document.getElementById('mobile-ui').style.display = 'block';
-            else document.body.requestPointerLock();
-
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xdc8a44); // Pôr do sol
-            scene.fog = new THREE.FogExp2(0xdc8a44, 0.015);
-
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.rotation.order = 'YXZ';
-            scene.add(camera);
-            camera.add(gunGroup);
-
-            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.shadowMap.enabled = true;
-            document.body.appendChild(renderer.domElement);
-
-            const ambient = new THREE.AmbientLight(0xffeedd, 0.5); scene.add(ambient);
-            const sun = new THREE.DirectionalLight(0xffaa55, 1.2);
-            sun.position.set(100, 200, 50); sun.castShadow = true;
-            sun.shadow.mapSize.width = 1024; sun.shadow.mapSize.height = 1024;
-            sun.shadow.camera.left = -100; sun.shadow.camera.right = 100;
-            sun.shadow.camera.top = 100; sun.shadow.camera.bottom = -100;
-            scene.add(sun);
-
-            const floor = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), matDirt);
-            floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
-
-            grassInst = createGrass(); // Grama
-
-            for(let i=0; i<60; i++) {
-                let x = (Math.random()-0.5)*300, z = (Math.random()-0.5)*300;
-                if(Math.abs(x)>10 && Math.abs(z)>10) createAcaciaTree(x, z);
-            }
-            for(let i=0; i<40; i++) createRock((Math.random()-0.5)*300, (Math.random()-0.5)*300, Math.random()*2+1);
-
-            animals.push(new Animal('lion', 25, -25));
-            animals.push(new Animal('lion', -30, 40));
-            animals.push(new Animal('lion', 50, 10));
-            for(let i=0; i<8; i++) animals.push(new Animal('gazelle', (Math.random()-0.5)*150, (Math.random()-0.5)*150));
-
-            spawnGroundItem('ak47', 5, -5);
-            spawnGroundItem('shotgun', -10, 8);
-            spawnGroundItem('sniper', 15, 15);
-
-            equipWeapon('pistola');
-            animate();
-        }
-
-        // ==========================================
-        // MECÂNICAS (Tiro, Recoil e Interação)
-        // ==========================================
-        function toggleAim(forceState = null) {
-            const data = WEAPONS[player.weapon];
-            player.isAiming = forceState !== null ? forceState : !player.isAiming;
+        // FETCH VINCULOS E TITULOS (Para Aba Integração)
+        async function fetchPendencias(token, dtIni, dtFim) {
+            const apiBase = getApiBase();
+            let v = [], t = [];
+            try {
+                const resV = await fetch(`${apiBase}/NotaFiscal/Vinculo?dtIni=${dtIni}&dtFim=${dtFim}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                if(resV.ok) v = await resV.json();
+            } catch(e) { console.warn('Erro vínculos', e); }
             
-            if (player.isAiming) {
-                camera.fov = data.zoom;
-                if (data.hasScope) {
-                    document.getElementById('scope-overlay').style.display = 'block';
-                    document.getElementById('crosshair').style.display = 'none';
-                    if(currentGunMesh) currentGunMesh.visible = false;
-                } else {
-                    if(currentGunMesh) currentGunMesh.position.set(0, -0.2, -0.4); // Ironsight
-                    document.getElementById('crosshair').style.transform = "translate(-50%, -50%) scale(0.5)";
-                }
-            } else {
-                camera.fov = 75;
-                document.getElementById('scope-overlay').style.display = 'none';
-                document.getElementById('crosshair').style.display = 'block';
-                document.getElementById('crosshair').style.transform = "translate(-50%, -50%) scale(1)";
-                if(currentGunMesh) {
-                    currentGunMesh.visible = true;
-                    currentGunMesh.position.set(0.3, -0.3, -0.6);
-                }
-            }
-            camera.updateProjectionMatrix();
-        }
-
-        function fireWeapon() {
-            const data = WEAPONS[player.weapon];
-            const now = performance.now();
-            if (now - player.lastShot < data.delay || (player.ammo <= 0 && data.type !== 'melee')) return;
-
-            player.lastShot = now;
-            if(data.type !== 'melee') player.ammo--;
-            updateHUD();
-
-            // RECOIL DA ARMA (Visual)
-            if(currentGunMesh && currentGunMesh.visible) {
-                currentGunMesh.position.z += 0.15;
-                currentGunMesh.rotation.x += 0.1;
-                setTimeout(() => { if(currentGunMesh) { currentGunMesh.position.z -= 0.15; currentGunMesh.rotation.x -= 0.1;} }, 50);
-                muzzleFlash.intensity = 3; setTimeout(() => muzzleFlash.intensity = 0, 50);
-            }
+            try {
+                const resT = await fetch(`${apiBase}/Faturamento/Titulos?dtini=${formatAPI(dtIni)}&dtfim=${formatAPI(dtFim)}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                if(resT.ok) t = await resT.json();
+            } catch(e) { console.warn('Erro títulos', e); }
             
-            // RECOIL DA CÂMERA (Estilo CS)
-            player.recoilPitch += data.recoil;
-
-            // Expandir Crosshair
-            const chLines = document.querySelectorAll('.ch-line');
-            chLines.forEach(l => l.style.boxShadow = "0 0 10px red");
-            setTimeout(() => chLines.forEach(l => l.style.boxShadow = "0 0 2px black"), 100);
-
-            // Tiro Físico
-            const shots = data.type === 'shotgun' ? 8 : 1;
-            for(let s=0; s<shots; s++) {
-                raycaster.setFromCamera(centerScreen, camera);
-                if(data.type === 'shotgun') {
-                    raycaster.ray.direction.x += (Math.random()-0.5)*0.08;
-                    raycaster.ray.direction.y += (Math.random()-0.5)*0.08;
-                    raycaster.ray.direction.normalize();
-                }
-
-                const targets = animals.filter(a => a.state !== 'dead').map(a => a.mesh);
-                const intersects = raycaster.intersectObjects([...targets, ...colliders.map(c=>c.mesh||c)], true);
-
-                if (intersects.length > 0) {
-                    const hit = intersects[0];
-                    createTracer(currentGunMesh ? currentGunMesh.getWorldPosition(new THREE.Vector3()) : camera.position, hit.point);
-                    const animalHit = animals.find(a => a.mesh.children.includes(hit.object) || a.mesh === hit.object || (hit.object.parent && a.mesh.children.includes(hit.object.parent)));
-                    
-                    if (animalHit) animalHit.takeDamage(data.dmg);
-                    else createVFX(hit.point, 0x8f683a, 5); // Poeira
-                } else {
-                    createTracer(currentGunMesh ? currentGunMesh.getWorldPosition(new THREE.Vector3()) : camera.position, raycaster.ray.at(100, new THREE.Vector3()));
-                }
-            }
+            return { vinculos: Array.isArray(v) ? v : [], titulos: Array.isArray(t) ? t : [] };
         }
 
-        let itemToPick = null;
-        function checkGroundItems() {
-            raycaster.setFromCamera(centerScreen, camera);
-            const intersects = raycaster.intersectObjects(groundItems.map(i => i.mesh), true);
-            const msg = document.getElementById('interact-msg');
-            itemToPick = null;
-
-            if (intersects.length > 0 && intersects[0].distance < 4) {
-                const hit = intersects[0].object;
-                itemToPick = groundItems.find(i => i.mesh === hit || i.mesh.children.includes(hit));
-                if(itemToPick) {
-                    msg.innerText = `[E / PEGAR] ${WEAPONS[itemToPick.id].name}`;
-                    msg.style.display = 'block';
-                }
-            } else { msg.style.display = 'none'; }
-        }
-
-        function dropCurrentWeapon() {
-            if(player.weapon === 'faca') return;
-            if(player.isAiming) toggleAim(false);
-            const dir = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion);
-            spawnGroundItem(player.weapon, camera.position.x + dir.x, camera.position.z + dir.z);
-            equipWeapon('faca');
-        }
-
-        function updateHUD() {
-            document.getElementById('hp-val').innerText = player.hp;
-            document.getElementById('weapon-name').innerText = WEAPONS[player.weapon].name;
-            document.getElementById('ammo-val').innerText = WEAPONS[player.weapon].type === 'melee' ? '∞' : player.ammo;
-        }
-
-        // ==========================================
-        // INPUTS E MOBILE
-        // ==========================================
-        let keys = { w:false, a:false, s:false, d:false };
-        
-        document.addEventListener('keydown', (e) => {
-            const k = e.key.toLowerCase(); if(keys.hasOwnProperty(k)) keys[k] = true;
-            if(k === ' ' && player.onGround) { player.vel.y = 12; player.onGround = false; }
-            if(k === 'e' && itemToPick) {
-                if(player.weapon !== 'faca') dropCurrentWeapon();
-                equipWeapon(itemToPick.id, itemToPick.ammo);
-                scene.remove(itemToPick.mesh); groundItems = groundItems.filter(i => i !== itemToPick);
-            }
-            if(k === 'g') dropCurrentWeapon();
-        });
-        document.addEventListener('keyup', (e) => { const k = e.key.toLowerCase(); if(keys.hasOwnProperty(k)) keys[k] = false; });
-        document.addEventListener('mousedown', (e) => { if (document.pointerLockElement) { if (e.button === 0) fireWeapon(); if (e.button === 2) toggleAim(true); }});
-        document.addEventListener('mouseup', (e) => { if (e.button === 2 && document.pointerLockElement) toggleAim(false); });
-        
-        document.addEventListener('mousemove', (e) => {
-            if (document.pointerLockElement) {
-                let sens = player.isAiming ? 0.0005 : 0.002;
-                camera.rotation.y -= e.movementX * sens;
-                camera.rotation.x -= e.movementY * sens;
-                camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotation.x));
-            }
-        });
-
-        // Mobile
-        let joyActive = false, joyOrigin = {x:0, y:0}, joyDelta = {x:0, y:0};
-        document.getElementById('left-zone').addEventListener('touchstart', (e) => {
-            const t = e.changedTouches[0]; joyActive = true; joyOrigin = { x: t.clientX, y: t.clientY };
-            const b = document.getElementById('joystick-base'); b.style.display = 'block'; b.style.left = (t.clientX - 65) + 'px'; b.style.top = (t.clientY - 65) + 'px';
-        });
-        document.getElementById('left-zone').addEventListener('touchmove', (e) => {
-            if(!joyActive) return; const t = e.changedTouches[0];
-            let dx = t.clientX - joyOrigin.x, dy = t.clientY - joyOrigin.y;
-            const dist = Math.sqrt(dx*dx + dy*dy); if(dist > 50) { dx = (dx/dist)*50; dy = (dy/dist)*50; }
-            document.getElementById('joystick-stick').style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
-            joyDelta = { x: dx/50, y: dy/50 };
-        });
-        document.getElementById('left-zone').addEventListener('touchend', () => { joyActive = false; joyDelta = {x:0, y:0}; document.getElementById('joystick-base').style.display = 'none'; });
-
-        let lastTouch = null;
-        document.getElementById('right-zone').addEventListener('touchstart', (e) => lastTouch = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY });
-        document.getElementById('right-zone').addEventListener('touchmove', (e) => {
-            const t = e.changedTouches[0];
-            if(lastTouch) {
-                let sens = player.isAiming ? 0.002 : 0.006;
-                camera.rotation.y -= (t.clientX - lastTouch.x) * sens;
-                camera.rotation.x -= (t.clientY - lastTouch.y) * sens;
-                camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotation.x));
-            }
-            lastTouch = { x: t.clientX, y: t.clientY };
-        });
-        document.getElementById('right-zone').addEventListener('touchend', () => lastTouch = null);
-
-        document.getElementById('btn-shoot').addEventListener('touchstart', fireWeapon);
-        document.getElementById('btn-aim').addEventListener('touchstart', (e) => { e.preventDefault(); toggleAim(); });
-        document.getElementById('btn-jump').addEventListener('touchstart', () => { if(player.onGround){ player.vel.y = 12; player.onGround = false;} });
-        document.getElementById('btn-drop').addEventListener('touchstart', dropCurrentWeapon);
-        document.getElementById('btn-interact').addEventListener('touchstart', () => {
-            if(itemToPick) {
-                if(player.weapon !== 'faca') dropCurrentWeapon();
-                equipWeapon(itemToPick.id, itemToPick.ammo);
-                scene.remove(itemToPick.mesh); groundItems = groundItems.filter(i => i !== itemToPick);
-            }
-        });
-
-        // ==========================================
-        // LOOP PRINCIPAL (Vento, Animação e Física)
-        // ==========================================
-        const clock = new THREE.Clock();
-        const pBox = new THREE.Box3();
-
-        function checkCollision(pos) {
-            pBox.setFromCenterAndSize(new THREE.Vector3(pos.x, pos.y - player.height/2, pos.z), new THREE.Vector3(player.radius, player.height, player.radius));
-            for(let box of colliders) if(pBox.intersectsBox(box)) return true;
-            return false;
-        }
-
-        // Criar folhas caindo com o vento
-        for(let i=0; i<150; i++) {
-            const m = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.2), new THREE.MeshBasicMaterial({color: 0x4b6b28, side: THREE.DoubleSide}));
-            m.position.set((Math.random()-0.5)*100, Math.random()*20, (Math.random()-0.5)*100);
-            scene.add(m); leavesParticles.push(m);
-        }
-
-        function animate() {
-            requestAnimationFrame(animate);
-            const dt = Math.min(clock.getDelta(), 0.1);
-            const time = clock.getElapsedTime();
-
-            // Movimento Jogador
-            let mX = 0, mZ = 0;
-            if(isMobile && joyActive) { mX = joyDelta.x; mZ = joyDelta.y; }
-            else { if(keys.w) mZ = -1; if(keys.s) mZ = 1; if(keys.a) mX = -1; if(keys.d) mX = 1; }
-
-            if(mX !== 0 || mZ !== 0) {
-                const dir = new THREE.Vector3(mX, 0, mZ).normalize();
-                const camR = camera.rotation.y;
-                let curSpeed = player.isAiming ? player.speed * 0.4 : player.speed;
-                const fX = (dir.x * Math.cos(camR) + dir.z * Math.sin(camR)) * curSpeed * dt;
-                const fZ = (dir.z * Math.cos(camR) - dir.x * Math.sin(camR)) * curSpeed * dt;
-
-                let nX = new THREE.Vector3(player.pos.x + fX, player.pos.y, player.pos.z);
-                let nZ = new THREE.Vector3(player.pos.x, player.pos.y, player.pos.z + fZ);
-
-                if(!checkCollision(nX)) player.pos.x += fX;
-                if(!checkCollision(nZ)) player.pos.z += fZ;
+        // ================================================================
+        // 2. PROCESSAMENTO DE DADOS
+        // ================================================================
+        function processarPostos(transacoes, precoBase) {
+            const map = new Map();
+            transacoes.forEach(t => {
+                const key = t.estabelecimento || 'Não informado';
+                if (!map.has(key)) map.set(key, { posto: key, cidade: `${t.cidade} - ${t.uf}`.replace(/^ - /, ''), volume: 0, custo: 0, economia: 0, transacoes: [], placas: new Set() });
                 
-                // Head bobbing (Balanço da câmera)
-                if (player.onGround) camera.position.y = player.pos.y + Math.sin(time * 12) * 0.08;
-            } else {
-                camera.position.y = player.pos.y;
-            }
-
-            // Recoil Recovery (Câmera volta ao lugar após o tiro)
-            if (player.recoilPitch > 0) {
-                camera.rotation.x += player.recoilPitch * 0.2; // Sobe
-                player.recoilPitch -= dt * 2; // Desce rápido
-                if(player.recoilPitch < 0) player.recoilPitch = 0;
-            }
-
-            // Gravidade
-            player.vel.y -= 30 * dt;
-            player.pos.y += player.vel.y * dt;
-            if (player.pos.y <= player.height) { player.pos.y = player.height; player.vel.y = 0; player.onGround = true; }
-            
-            camera.position.x = player.pos.x;
-            camera.position.z = player.pos.z;
-
-            // Animação Vento (Grama e Folhas)
-            if(grassInst) {
-                const mat = grassInst.matrix;
-                grassInst.position.x = Math.sin(time * 2) * 0.1; // Balanço suave
-                grassInst.updateMatrix();
-            }
-            leavesParticles.forEach(l => {
-                l.position.y -= dt * 2;
-                l.position.x += Math.sin(time + l.position.y) * 0.05; // Vento
-                l.rotation.x += 0.05; l.rotation.y += 0.05;
-                if(l.position.y < 0) { l.position.y = 20; l.position.x = player.pos.x + (Math.random()-0.5)*50; l.position.z = player.pos.z + (Math.random()-0.5)*50; }
+                const p = map.get(key);
+                p.volume += t.volume;
+                p.custo += t.valor_total;
+                p.economia += t.volume * (precoBase - t.valor_litro);
+                p.placas.add(t.placa);
             });
 
-            // Sangue / Poeira
-            for(let i = particles.length - 1; i >= 0; i--) {
-                let p = particles[i]; p.life -= dt * 3; p.vel.y -= 30 * dt; p.mesh.position.addScaledVector(p.vel, dt);
-                if(p.life <= 0) { scene.remove(p.mesh); particles.splice(i, 1); }
-            }
-
-            animals.forEach(a => a.update(dt, time));
-            checkGroundItems();
-            renderer.render(scene, camera);
+            const postos = Array.from(map.values());
+            postos.forEach(p => {
+                p.precoMedio = p.volume > 0 ? p.custo / p.volume : 0;
+                p.qtdVeiculos = p.placas.size;
+            });
+            
+            postos.sort((a, b) => b.volume - a.volume);
+            
+            const totalVolume = postos.reduce((s, p) => s + p.volume, 0);
+            let acum = 0;
+            postos.forEach((p, idx) => {
+                acum += p.volume;
+                p.percentualAcum = totalVolume > 0 ? (acum / totalVolume) * 100 : 0;
+                p.abc = p.percentualAcum <= 80 ? 'A' : (p.percentualAcum <= 95 ? 'B' : 'C');
+                p.idx = idx + 1;
+            });
+            return postos;
         }
 
-        document.getElementById('btn-start').addEventListener('click', initGame);
-        window.addEventListener('resize', () => { if(camera) { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }});
-        document.addEventListener('contextmenu', e => e.preventDefault());
+        // ================================================================
+        // 3. MAPA DE CALOR E RASTRO (Leaflet c/ Satélite)
+        // ================================================================
+        const coordsBrasil = {
+            'MATUPA - MT': { lat: -10.584, lng: -54.928 }, 'VARZEA GRANDE - MT': { lat: -15.65, lng: -56.13 },
+            'FERNANDOPOLIS - SP': { lat: -20.28, lng: -49.22 }, 'PENAPOLIS - SP': { lat: -21.42, lng: -50.08 },
+            'ITAITUBA - PA': { lat: -4.27, lng: -55.98 }, 'PORTO VELHO - RO': { lat: -8.76, lng: -63.90 },
+            'CUIABA - MT': { lat: -15.60, lng: -56.10 }, 'SAO JOSE DOS PINHAIS - PR': { lat: -25.53, lng: -49.20 },
+            'MT': { lat: -12.5, lng: -54.9 }, 'SP': { lat: -22.0, lng: -48.0 }, 'PR': { lat: -24.0, lng: -52.0 },
+            'MS': { lat: -20.5, lng: -54.5 }, 'RO': { lat: -10.0, lng: -63.0 }, 'PA': { lat: -3.0, lng: -53.0 },
+        };
+
+        function getCoordForCity(cidadeUf) {
+            if (coordsBrasil[cidadeUf]) return coordsBrasil[cidadeUf];
+            const uf = cidadeUf.split('-').pop().trim();
+            if (coordsBrasil[uf]) return coordsBrasil[uf];
+            return { lat: -15.0, lng: -50.0 }; // Default Center Brazil
+        }
+
+        function renderHeatmap() {
+            const mapCidade = new Map();
+            transacoesGlobais.forEach(t => {
+                const key = `${t.cidade} - ${t.uf}`.replace(/^ - /, '');
+                if (!key) return;
+                if (!mapCidade.has(key)) mapCidade.set(key, { volume: 0, cidade: t.cidade, uf: t.uf });
+                mapCidade.get(key).volume += t.volume;
+            });
+
+            const pontos = [];
+            mapCidade.forEach((value, key) => {
+                const coord = getCoordForCity(key);
+                // Intensidade baseada no volume max 10.000 litros por ponto
+                const intensity = Math.min(1.0, value.volume / 10000); 
+                // Adiciona ruído aleatório para espalhar pinos na mesma cidade (Rastro visual)
+                const latNoise = coord.lat + (Math.random() - 0.5) * 0.05;
+                const lngNoise = coord.lng + (Math.random() - 0.5) * 0.05;
+                pontos.push([latNoise, lngNoise, intensity]);
+            });
+
+            if (mapInstance) { mapInstance.remove(); }
+
+            // Configuração de Camadas (Ruas vs Satélite)
+            const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '© OpenStreetMap' });
+            const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18, attribution: '© Esri' });
+
+            mapInstance = L.map('heatmap', { layers: [osmLayer], zoomControl: true }).setView([-15.0, -50.0], 4);
+            L.control.layers({ "Mapa de Ruas": osmLayer, "Visão Satélite": satLayer }).addTo(mapInstance);
+
+            heatmapInstance = L.heatLayer(pontos, {
+                radius: 20, blur: 15, maxZoom: 10,
+                gradient: { 0.2: 'blue', 0.4: 'lime', 0.6: 'yellow', 0.8: 'orange', 1.0: 'red' }
+            }).addTo(mapInstance);
+
+            if(pontos.length > 0) mapInstance.fitBounds(pontos.map(p => [p[0], p[1]]), { padding: [30, 30] });
+
+            // Atualiza Tabela de Estados
+            renderStateTable(mapCidade);
+        }
+
+        function renderStateTable() {
+            const ufCusto = new Map();
+            transacoesGlobais.forEach(t => {
+                const uf = t.uf || 'ND';
+                if (!ufCusto.has(uf)) ufCusto.set(uf, { volume: 0, custo: 0 });
+                ufCusto.get(uf).volume += t.volume;
+                ufCusto.get(uf).custo += t.valor_total;
+            });
+            const tbody = document.getElementById('stateTableBody'); tbody.innerHTML = '';
+            const totalVol = transacoesGlobais.reduce((s, t) => s + t.volume, 0);
+            Array.from(ufCusto.entries()).sort((a, b) => b[1].volume - a[1].volume).forEach(([uf, data]) => {
+                const pMedio = data.volume > 0 ? data.custo/data.volume : 0;
+                const eco = data.volume * (precoBaseGlobal - pMedio);
+                tbody.innerHTML += `<tr><td class="text-left"><strong>${uf}</strong></td><td class="text-right">${fmt(data.volume)}</td><td class="text-right">${(data.volume/totalVol*100).toFixed(1)}%</td><td class="text-right">R$ ${fmt(pMedio)}</td><td class="text-right ${eco>=0?'text-green':'text-danger'}">R$ ${fmt(eco)}</td></tr>`;
+            });
+        }
+
+        // ================================================================
+        // 4. TABELAS DINÂMICAS & GRÁFICOS
+        // ================================================================
+        function fmt(v) { return Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+        
+        function renderKpis() {
+            const volT = todosPostos.reduce((a,b)=>a+b.volume,0);
+            const cusT = todosPostos.reduce((a,b)=>a+b.custo,0);
+            const pMed = volT>0 ? cusT/volT : 0;
+            const ecoT = todosPostos.reduce((a,b)=>a+b.economia,0);
+            
+            document.getElementById('kpiGrid').innerHTML = `
+                <div class="kpi-card"><div class="label">Total de Postos</div><div class="value">${todosPostos.length}</div><div class="sub">Unidades atendidas</div></div>
+                <div class="kpi-card"><div class="label">Volume Abastecido</div><div class="value">${fmt(volT)} L</div><div class="sub">Período selecionado</div></div>
+                <div class="kpi-card"><div class="label">Custo Bruto</div><div class="value">R$ ${fmt(cusT)}</div><div class="sub">Valor Total Pago</div></div>
+                <div class="kpi-card"><div class="label">Preço Médio Gasto</div><div class="value">R$ ${fmt(pMed)}</div><div class="sub">Ponderado geral</div></div>
+                <div class="kpi-card highlight"><div class="label">Economia de Rota</div><div class="value">R$ ${fmt(ecoT)}</div><div class="sub">Vs. R$ ${fmt(precoBaseGlobal)} base</div></div>
+            `;
+        }
+
+        function renderStationsTable(filter) {
+            const tbody = document.getElementById('stationsTableBody'); tbody.innerHTML = '';
+            let filtered = filter === 'all' ? todosPostos : todosPostos.filter(p => p.abc === filter);
+            document.getElementById('stationCount').textContent = `${filtered.length} postos listados`;
+            
+            if (filtered.length === 0) return;
+            let tv=0, tc=0, te=0, tcam=0;
+
+            filtered.forEach((p, i) => {
+                tv+=p.volume; tc+=p.custo; te+=p.economia; tcam+=p.qtdVeiculos;
+                // Alerta se preço médio estiver 3% acima da base
+                let pClass = p.precoMedio > (precoBaseGlobal * 1.03) ? 'text-danger' : '';
+                
+                tbody.innerHTML += `<tr>
+                    <td class="text-left">${p.idx || i+1}</td>
+                    <td class="text-left" style="font-weight:600; color:var(--brand-blue)">${p.posto}</td>
+                    <td class="text-left">${p.cidade}</td>
+                    <td class="text-center" style="font-weight:700">🚚 ${p.qtdVeiculos}</td>
+                    <td class="text-right">${fmt(p.volume)}</td>
+                    <td class="text-right ${pClass}">R$ ${fmt(p.precoMedio)}</td>
+                    <td class="text-right">R$ ${fmt(p.custo)}</td>
+                    <td class="text-right ${p.economia>=0?'text-green':'text-danger'}">R$ ${fmt(p.economia)}</td>
+                    <td class="text-center"><span class="badge-abc ${p.abc}">${p.abc}</span></td>
+                </tr>`;
+            });
+            tbody.innerHTML += `<tr class="total-row"><td colspan="3">TOTAIS DA CLASSE</td><td class="text-center">🚚 ${tcam}</td><td class="text-right">${fmt(tv)}</td><td class="text-right">--</td><td class="text-right">R$ ${fmt(tc)}</td><td class="text-right">R$ ${fmt(te)}</td><td></td></tr>`;
+        }
+
+        // Helpers de Gráficos omitidos por brevidade (Utilizam lógica padrão do ChartJS)
+        let chTop=null, chSav=null, chClass=null, chMain=null, chPrice=null, chAbc=null, chPie=null;
+        
+        function renderOverviewCharts() {
+            if(chTop) chTop.destroy(); if(chSav) chSav.destroy(); if(chClass) chClass.destroy();
+            const color = getComputedStyle(document.documentElement).getPropertyValue('--brand-blue').trim();
+            const orange = getComputedStyle(document.documentElement).getPropertyValue('--brand-orange').trim();
+            
+            const top10 = todosPostos.slice(0,10);
+            chTop = new Chart(document.getElementById('topStationsChart'), { type: 'bar', data: { labels: top10.map(p=>p.posto.substring(0,15)+'.'), datasets: [{ data: top10.map(p=>p.volume), backgroundColor: color, borderRadius:4}] }, options:{plugins:{legend:{display:false}}} });
+            
+            const topS = [...todosPostos].sort((a,b)=>b.economia-a.economia).slice(0,10);
+            chSav = new Chart(document.getElementById('topSavingsChart'), { type: 'bar', data: { labels: topS.map(p=>p.posto.substring(0,15)+'.'), datasets: [{ data: topS.map(p=>p.economia), backgroundColor: '#28a745', borderRadius:4}] }, options:{plugins:{legend:{display:false}}} });
+            
+            const cA=todosPostos.filter(p=>p.abc==='A').length, cB=todosPostos.filter(p=>p.abc==='B').length, cC=todosPostos.filter(p=>p.abc==='C').length;
+            chClass = new Chart(document.getElementById('classCountChart'), { type: 'doughnut', data: { labels: ['A','B','C'], datasets: [{ data: [cA,cB,cC], backgroundColor: ['#28a745', '#f5b041', '#dc3545'], borderWidth:0 }] } });
+        }
+
+        function renderIntegration(type) {
+            const tbody = document.getElementById('integrationBody'); const thead = document.getElementById('integrationHead');
+            let rows = '';
+            if(type==='transacoes'){
+                thead.innerHTML=`<tr><th class="text-left">Posto</th><th class="text-left">Data</th><th class="text-left">Placa</th><th class="text-right">Valor R$</th></tr>`;
+                const tLimit = transacoesGlobais.slice(0,50); // Mostra 50 pendentes
+                tLimit.forEach(t => rows += `<tr><td class="text-left">${t.estabelecimento}</td><td class="text-left">${t.data}</td><td class="text-left">${t.placa}</td><td class="text-right">${fmt(t.Valor)}</td></tr>`);
+            } else if (type==='vinculos') {
+                thead.innerHTML=`<tr><th class="text-left">Chave NFe</th><th class="text-center">Operação</th><th class="text-left">Vencimento</th></tr>`;
+                dadosIntegracao.vinculos.forEach(v => rows += `<tr><td class="text-left">${v.ChaveNFe||'-'}</td><td class="text-center">${v.Operacao||'-'}</td><td class="text-left">${v.VctoPrevisto||'-'}</td></tr>`);
+            } else {
+                thead.innerHTML=`<tr><th class="text-left">ID Título</th><th class="text-left">Vencimento</th><th class="text-right">Valor R$</th></tr>`;
+                dadosIntegracao.titulos.forEach(t => rows += `<tr><td class="text-left">${t.titulo_id||'-'}</td><td class="text-left">${t.data_vencimento||'-'}</td><td class="text-right">${fmt(t.valor_total||0)}</td></tr>`);
+            }
+            tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Nenhum dado encontrado ou pendente nesta aba.</td></tr>`;
+        }
+
+
+        // ================================================================
+        // 5. MOTOR DE CONEXÃO
+        // ================================================================
+        async function conectar() {
+            if(carregando) return; carregando=true;
+            const statusMsg = document.getElementById('statusMsg');
+            document.getElementById('kpiGrid').innerHTML = '<div class="loader">Buscando dados na TruckPag...</div>';
+
+            try {
+                // Pega Valores
+                const tkInput = document.getElementById('tokenInput').value.trim();
+                const dtIni = document.getElementById('dataInicio').value;
+                const dtFim = document.getElementById('dataFim').value;
+                precoBaseGlobal = parseFloat(document.getElementById('precoBaseInput').value) || 7.18;
+
+                if(!tkInput) throw new Error("Insira o Token de Integração no menu lateral.");
+                statusMsg.textContent = 'Autenticado! Puxando relatório...'; statusMsg.className = 'status-msg';
+
+                // Chamadas simultâneas (Transações, Vínculos, Títulos)
+                const [transacoes, pendencias] = await Promise.all([
+                    fetchTransacoes(tkInput, dtIni, dtFim),
+                    fetchPendencias(tkInput, dtIni, dtFim)
+                ]);
+
+                transacoesGlobais = transacoes;
+                dadosIntegracao = pendencias;
+                todosPostos = processarPostos(transacoes, precoBaseGlobal);
+
+                // Render Geral
+                renderKpis(); renderStationsTable(currentFilter); renderOverviewCharts(); renderHeatmap(); renderIntegration('transacoes');
+                
+                statusMsg.textContent = `✅ Sucesso: ${transacoes.length} abastecimentos!`;
+                statusMsg.className = 'status-msg success';
+
+            } catch (err) {
+                console.error(err);
+                statusMsg.textContent = `❌ Erro: ${err.message}`; statusMsg.className = 'status-msg error';
+                document.getElementById('kpiGrid').innerHTML = '';
+            } finally {
+                carregando = false;
+            }
+        }
+
+        // ================================================================
+        // 6. MOCK DE DADOS E EVENTOS
+        // ================================================================
+        function usarMock() {
+            transacoesGlobais = [];
+            const pBase = parseFloat(document.getElementById('precoBaseInput').value) || 7.18;
+            for(let i=0; i<300; i++) {
+                const vol = 200 + Math.random()*2000; const p = 6.0 + Math.random()*1.5;
+                const cidades = [['MATUPA - MT','MT'], ['FERNANDOPOLIS - SP','SP'], ['CUIABA - MT','MT'], ['SAO JOSE DOS PINHAIS - PR','PR']];
+                const c = cidades[Math.floor(Math.random()*4)];
+                transacoesGlobais.push({
+                    estabelecimento: 'POSTO TESTE ' + c[0], cidade: c[0].split(' - ')[0], uf: c[1],
+                    volume: vol, valor_litro: p, valor_total: vol*p,
+                    data: new Date(Date.now() - Math.random()*1e10).toISOString().split('T')[0],
+                    placa: 'MOCK'+Math.floor(Math.random()*99), Valor: vol*p
+                });
+            }
+            precoBaseGlobal = pBase;
+            todosPostos = processarPostos(transacoesGlobais, precoBaseGlobal);
+            renderKpis(); renderStationsTable(currentFilter); renderOverviewCharts(); renderHeatmap();
+            document.getElementById('statusMsg').textContent = `✅ Mock carregado!`; document.getElementById('statusMsg').className = 'status-msg success';
+        }
+
+        // Eventos
+        document.getElementById('btnConectar').addEventListener('click', conectar);
+        document.getElementById('btnMock').addEventListener('click', usarMock);
+        document.getElementById('navTabs').addEventListener('click', e => {
+            if(e.target.closest('.nav-tab')){
+                document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+                e.target.closest('.nav-tab').classList.add('active');
+                const tId = e.target.closest('.nav-tab').dataset.tab;
+                document.getElementById(tId).classList.add('active');
+                if(tId === 'tab-heatmap' && mapInstance) setTimeout(()=>mapInstance.invalidateSize(), 100);
+            }
+        });
+        document.querySelectorAll('.period-btn[data-filter]').forEach(b => b.addEventListener('click', function(){
+            document.querySelectorAll('.period-btn[data-filter]').forEach(btn=>btn.classList.remove('active'));
+            this.classList.add('active'); currentFilter = this.dataset.filter; renderStationsTable(currentFilter);
+        }));
+        document.querySelectorAll('.period-btn[data-integration]').forEach(b => b.addEventListener('click', function(){
+            document.querySelectorAll('.period-btn[data-integration]').forEach(btn=>btn.classList.remove('active'));
+            this.classList.add('active'); renderIntegration(this.dataset.integration);
+        }));
+
+        // Início
+        window.onload = () => {
+            const h = new Date(); const m6 = new Date(h); m6.setMonth(h.getMonth() - 2);
+            document.getElementById('dataInicio').value = m6.toISOString().split('T')[0];
+            document.getElementById('dataFim').value = h.toISOString().split('T')[0];
+            usarMock(); // Carrega mock visual inicialmente
+        };
     </script>
 </body>
 </html>
