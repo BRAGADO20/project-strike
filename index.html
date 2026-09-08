@@ -156,7 +156,6 @@
 
     <!-- ===== SIDEBAR ===== -->
     <div class="sidebar">
-        
         <!-- LOGIN SECTION LIMPA: APENAS USUÁRIO, SENHA E DATAS -->
         <div class="login-section">
             <div class="field">
@@ -199,6 +198,7 @@
         <!-- CABEÇALHO SUPERIOR C/ LOGO -->
         <header class="top-header">
             <div class="header-logo">
+                <!-- LOGO OFICIAL -->
                 <img src="cavalheiro-logistics.png" alt="Cavalheiro Log" onerror="this.src='https://via.placeholder.com/200x50/36495d/ffffff?text=Cavalheiro+Logistics'">
             </div>
             <div class="loading-container" id="loadingContainer">
@@ -217,12 +217,14 @@
                 <button class="nav-tab" data-tab="tab-temporal">📈 Evolução</button>
                 <button class="nav-tab" data-tab="tab-abc">📉 Curva ABC</button>
                 <button class="nav-tab" data-tab="tab-stations">🏢 Análise de Postos</button>
-                <button class="nav-tab" data-tab="tab-heatmap">🔥 Mapa Híbrido (ABC & Calor)</button>
+                <button class="nav-tab" data-tab="tab-heatmap">🔥 Mapa Híbrido</button>
                 <button class="nav-tab" data-tab="tab-integration">🔗 Integração ERP</button>
             </div>
 
+            <!-- MENSAGEM GLOBAL DE ERRO / LOADING -->
             <div id="globalMessageArea"></div>
 
+            <!-- KPIs -->
             <div class="kpi-grid" id="kpiGrid"></div>
 
             <!-- ABAS -->
@@ -324,7 +326,7 @@
             <div id="tab-heatmap" class="tab-content">
                 <div class="charts-grid one-col">
                     <div class="chart-box">
-                        <h3>🔥 Geoprocessamento de Abastecimento (Curva ABC & Calor)</h3>
+                        <h3>🔥 Geoprocessamento de Abastecimento (Localização ABC e Volume)</h3>
                         <div class="chart-container map">
                             <div id="heatmap" style="height:100%;width:100%;"></div>
                         </div>
@@ -368,7 +370,7 @@
 
     <script>
         // ================================================================
-        // CONSTANTE FIXA PARA PREÇO BASE ALVO
+        // CONSTANTE FIXA PARA PREÇO BASE ALVO E ROTA DA API
         // ================================================================
         const PRECO_BASE_PADRAO = 7.18;
         const API_BASE = 'https://api.truckpag.com.br';
@@ -457,9 +459,6 @@
             }
         }
 
-        // ================================================================
-        // 2. FUNÇÕES DE REDE DA TRUCKPAG (SEM PROXY EXTERNO, DIRETO DA FONTE)
-        // ================================================================
         function formatAPI(dateStr) { return dateStr.replace(/-/g, ''); } 
 
         let transacoesGlobais = [], todosPostos = [], dadosIntegracao = { transacoes: [], vinculos: [], titulos: [] };
@@ -467,22 +466,25 @@
         let mapInstance = null, heatmapInstance = null, markersLayer = null;
         let updateTimer = null;
 
-        // FETCH TRANSAÇÕES (USA ROTA LEGADA COM LOGIN MD5 E RETORNA ARRAY UNIFICADO)
+        // ================================================================
+        // 2. FUNÇÕES DA API TRUCKPAG (CONEXÃO PURA DIRETA)
+        // ================================================================
+        
+        // FETCH TRANSAÇÕES
         async function fetchTransacoes(usuario, senha, dtIni, dtFim) {
             
-            // Garantia absoluta do Hash (Se a senha for a que você me passou, usa o hash perfeito gerado no seu print)
-            // Isso previne que navegadores bugem os caracteres especiais (@ e #) na hora de gerar o MD5
+            // Garantia absoluta do Hash: Se a senha for a cadastrada, usa o hash perfeito que você mandou na imagem.
             const hash = (senha === '2Xuzj@r4#') ? '077658c5f44817a3366d50797ceceffe' : md5(senha);
             const credentials = btoa(usuario + ':' + hash);
             
-            // 1. FAZ O LOGIN PARA PEGAR O TOKEN JWT
+            // 1. FAZ O LOGIN PARA PEGAR O TOKEN JWT DA API LEGADA
             const authRes = await fetch(`${API_BASE}/auth`, {
                 method: 'POST',
                 headers: { 'Authorization': `Basic ${credentials}` }
             });
             
             if (!authRes.ok) {
-                if(authRes.status === 403) throw new Error("A TruckPag bloqueou a conexão (Erro 403 - Forbidden).");
+                if(authRes.status === 403) throw new Error("A TruckPag bloqueou a conexão (Erro 403 - Forbidden). Certifique-se de que não há VPNs ativas.");
                 if(authRes.status === 401) throw new Error("Usuário ou Senha Incorretos (Erro 401).");
                 throw new Error(`Falha no Login (HTTP ${authRes.status}).`);
             }
@@ -490,7 +492,7 @@
             const authData = await authRes.json();
             const token = authData.token; 
             
-            // 2. COM O TOKEN EM MÃOS, PUXA AS TRANSAÇÕES
+            // 2. COM O TOKEN JWT EM MÃOS, PUXA AS TRANSAÇÕES
             const urlLegacy = `${API_BASE}/Transacoes?dtini=${formatAPI(dtIni)}&dtfim=${formatAPI(dtFim)}&todas=S`;
             
             const res = await fetch(urlLegacy, { headers: { 'Authorization': `Bearer ${token}` } });
@@ -546,7 +548,7 @@
         }
 
         // ================================================================
-        // 4. PROCESSAMENTO DOS DADOS E AGRUPAMENTO
+        // 3. PROCESSAMENTO E AGRUPAMENTO
         // ================================================================
         function processarPostos(transacoes) {
             const map = new Map();
@@ -604,7 +606,7 @@
         }
 
         // ================================================================
-        // 5. MAPA DE AUDITORIA (GOOGLE HÍBRIDO + HEATMAP + MARCADORES ABC)
+        // 4. MAPA DE AUDITORIA (GOOGLE HÍBRIDO + HEATMAP + MARCADORES ABC)
         // ================================================================
         const coordsBrasil = {
             'MATUPA - MT': { lat: -10.584, lng: -54.928 }, 'VARZEA GRANDE - MT': { lat: -15.65, lng: -56.13 },
@@ -641,7 +643,7 @@
 
             if (mapInstance) mapInstance.remove();
             
-            // Camadas Base
+            // Camadas Base (O Híbrido do Google já traz satélite + Nomes/Rodovias/Fronteiras integrados perfeitamente)
             const googleHybrid = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxZoom: 18, attribution: '© Google Maps' });
             const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '© OSMap' });
 
@@ -650,13 +652,13 @@
             // Camada de Calor (Heatmap)
             heatmapInstance = L.heatLayer(pontosCalor, { radius: 25, blur: 20, maxZoom: 10, gradient: { 0.2: 'blue', 0.4: 'lime', 0.6: 'yellow', 0.8: 'orange', 1.0: 'red' } });
 
-            // Camada de Marcadores (Curva ABC)
+            // Camada de Marcadores ABC interativos
             if (markersLayer) markersLayer.clearLayers();
             markersLayer = L.layerGroup();
 
             todosPostos.forEach(p => {
                 const coord = getCoordForCity(`${p.cidade} - ${p.uf}`);
-                // Adiciona ruído suave para espalhar postos na mesma cidade e permitir clique
+                // Adiciona ruído suave para espalhar postos na mesma cidade e não encavalarem totalmente
                 const lat = coord.lat + (Math.random() - 0.5) * 0.03;
                 const lng = coord.lng + (Math.random() - 0.5) * 0.03;
 
@@ -671,22 +673,22 @@
                         <h4>${p.posto}</h4>
                         <span style="color:#666;">${p.cidade} - ${p.uf}</span><br><br>
                         <b>Classe:</b> <span class="badge-abc ${p.abc}">${p.abc}</span><br>
-                        <b>Volume:</b> ${fmt(p.volume)} L<br>
+                        <b>Volume Total:</b> ${fmt(p.volume)} L<br>
                         <b>Preço Médio:</b> R$ ${fmt(p.precoMedio)}<br>
-                        <b>Custo:</b> R$ ${fmt(p.custo)}<br>
-                        <b>Caminhões:</b> ${p.qtdVeiculos}
+                        <b>Custo Total:</b> R$ ${fmt(p.custo)}<br>
+                        <b>Veículos Atendidos:</b> ${p.qtdVeiculos}
                     </div>
                 `);
                 markersLayer.addLayer(marker);
             });
 
-            // Controles do Mapa
+            // Adiciona Controles no canto superior direito para o usuário poder ligar/desligar o calor e os pinos ABC
             L.control.layers(
                 { "Visão Satélite Híbrida": googleHybrid, "Mapa de Ruas": osmLayer }, 
                 { "Rastro de Calor": heatmapInstance, "Localização Postos (ABC)": markersLayer }
             ).addTo(mapInstance);
             
-            // Ativa ambas as camadas por padrão
+            // Ativa ambas as camadas por padrão para impressionar
             mapInstance.addLayer(heatmapInstance);
             mapInstance.addLayer(markersLayer);
 
@@ -810,10 +812,12 @@
         function renderIntegration(type) {
             const tbody = document.getElementById('integrationBody'); const thead = document.getElementById('integrationHead');
             let rows = '';
+            // Limpa mock da tela inicial
             if(transacoesGlobais.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="4" class="text-center" style="padding:30px; color:var(--text-muted);">Nenhum dado pendente nesta aba.</td></tr>`;
                 return;
             }
+            
             if(type==='transacoes'){
                 thead.innerHTML=`<tr><th class="text-left">Posto</th><th class="text-left">Data</th><th class="text-left">Placa</th><th class="text-right">Valor R$</th></tr>`;
                 const tLimit = transacoesGlobais.slice(0,50); 
@@ -861,8 +865,8 @@
                 dadosIntegracao = pendencias;
                 
                 if(transacoes.length === 0) {
-                    globalMsg.innerHTML = `<div class="error-container" style="border-color: var(--warning);">⚠️ <b>Conexão Estabelecida!</b><br><br>Não há <b>nenhum abastecimento</b> na sua frota entre ${dtIni.split('-').reverse().join('/')} e ${dtFim.split('-').reverse().join('/')}.<br><i>Tente aumentar o intervalo de datas no menu lateral.</i></div>`;
-                    statusMsg.innerHTML = `⚠️ Conectado (Zero Abastecimentos)`;
+                    globalMsg.innerHTML = `<div class="error-container" style="border-color: var(--warning);">⚠️ <b>Conexão Estabelecida com Sucesso!</b><br><br>A TruckPag não retornou <b>nenhum abastecimento</b> na sua frota entre as datas selecionadas.<br><br><i>Tente aumentar o intervalo de datas.</i></div>`;
+                    statusMsg.innerHTML = `⚠️ Conectado (Zero abastecimentos)`;
                     statusMsg.className = 'status-msg warning';
                     renderOverviewCharts(); renderMainChart(currentPeriod); renderPriceChart(currentPeriod); renderAbcCharts(); renderStationsTable('all'); renderIntegration('transacoes');
                 } else {
@@ -872,13 +876,16 @@
                     renderKpis(); renderStationsTable(currentFilter); renderOverviewCharts(); renderHeatmap(); renderIntegration('transacoes');
                     renderMainChart(currentPeriod); renderPriceChart(currentPeriod); renderPeriodTable(currentPeriod); renderAbcCharts();
                     
-                    statusMsg.innerHTML = `✅ <b>${transacoes.length} abastecimentos carregados</b>`;
+                    statusMsg.innerHTML = `✅ <b>${transacoes.length} abastecimentos reais carregados</b>`;
                     statusMsg.className = 'status-msg success';
                 }
 
             } catch (err) {
                 console.error(err);
-                globalMsg.innerHTML = `<div class="error-container">❌ <b>Falha na Conexão com a TruckPag</b><br><br>${err.message}<br><br><small>Verifique se o usuário e senha estão corretos e se a extensão CORS está ativa no seu navegador.</small></div>`;
+                let msg = err.message;
+                if(msg.includes('Failed to fetch')) msg = "O navegador bloqueou a conexão (Erro de CORS). Certifique-se de que sua extensão 'CORS Unblock' está ligada e o campo de Headers está habilitado nela.";
+                
+                globalMsg.innerHTML = `<div class="error-container">❌ <b>Falha na Conexão com a TruckPag</b><br><br>${msg}</div>`;
                 statusMsg.innerHTML = `❌ Erro de Conexão`; 
                 statusMsg.className = 'status-msg error';
             } finally {
