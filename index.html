@@ -87,7 +87,6 @@
         /* ===== PAINEL PRINCIPAL & CABEÇALHO ===== */
         .main-content { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
-        /* NOVO: Header com Logo e Loading Bar */
         .top-header { background: var(--surface-color); padding: 15px 30px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); box-shadow: 0 2px 5px rgba(0,0,0,0.02); z-index: 10; position: relative;}
         .header-logo img { height: 40px; object-fit: contain; }
         
@@ -170,7 +169,7 @@
             </div>
             
             <div class="field" style="margin-top: 5px;">
-                <label>🔐 Token (Opção p/ Bypass CORS)</label>
+                <label>🔐 Token Direto (Opcional - TruckPag v2)</label>
                 <input type="text" id="tokenInput" placeholder="Deixe em branco para usar Login" value="304|NkyqZedQlyrTLjItQj9tU8sK8YjgvReDs4euHJBD">
             </div>
             
@@ -202,10 +201,9 @@
         <button class="theme-toggle" id="themeToggle">🌙 Modo Escuro</button>
     </div>
 
-    <!-- ===== PAINEL PRINCIPAL ===== -->
+    <!-- ===== PAINEL PRINCIPAL & CABEÇALHO ===== -->
     <div class="main-content">
         
-        <!-- HEADER COM LOGO E LOADING -->
         <header class="top-header">
             <div class="header-logo">
                 <img src="cavalheiro-logistics.png" alt="Cavalheiro Log" onerror="this.src='https://via.placeholder.com/200x50/36495d/ffffff?text=Cavalheiro+Logistics'">
@@ -219,7 +217,6 @@
         </header>
 
         <div class="dashboard">
-
             <!-- NAVEGAÇÃO -->
             <div class="nav-tabs" id="navTabs">
                 <button class="nav-tab active" data-tab="tab-overview">📊 Visão Geral</button>
@@ -231,7 +228,6 @@
             </div>
 
             <div id="globalMessageArea"></div>
-
             <div class="kpi-grid" id="kpiGrid"></div>
 
             <!-- ABAS -->
@@ -462,87 +458,113 @@
         // 2. CONFIGURAÇÃO E AUTENTICAÇÃO (TRUCKPAG API)
         // ================================================================
         function getApiBase() { return document.getElementById('envSelect').value === 'apihml' ? 'https://apihomo.truckpag.com.br' : 'https://api.truckpag.com.br'; }
-        function formatAPI(dateStr) { return dateStr.replace(/-/g, ''); } // Para endpoints legados
-
-        // BYPASS DE CORS AUTOMÁTICO (Caso o navegador bloqueie a requisição nativa)
-        async function fetchSafe(url, options) {
-            try {
-                const res = await fetch(url, options);
-                return res;
-            } catch (error) {
-                if (error.message.includes('Failed to fetch') || error.message.includes('CORS')) {
-                    console.warn("CORS bloqueado na rota principal. Acionando Proxy de segurança...");
-                    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-                    return await fetch(proxyUrl, options);
-                }
-                throw error;
-            }
-        }
-
+        
         let transacoesGlobais = [], todosPostos = [], dadosIntegracao = { transacoes: [], vinculos: [], titulos: [] };
         let precoBaseGlobal = 7.18, currentPeriod = 'daily', currentFilter = 'all', currentIntegration = 'transacoes';
         let mapInstance = null, heatmapInstance = null;
         let updateTimer = null;
 
-        // FETCH TRANSAÇÕES (Seguindo Documentação TruckPag)[cite: 3]
-        async function fetchTransacoes(token, dtIni, dtFim) {
+        // FETCH TRANSAÇÕES INTELIGENTE (Tenta V2 se tiver Token, senão Loga e usa Legada)
+        async function fetchTransacoesIntegradas(tokenInput, usuario, senha, dtIni, dtFim) {
             const apiBase = getApiBase();
-            const url = `${apiBase}/Transacoes?dtini=${formatAPI(dtIni)}&dtfim=${formatAPI(dtFim)}&todas=S`;
+            const result = [];
+            let token = tokenInput;
             
-            const response = await fetchSafe(url, { headers: { 'Authorization': `Bearer ${token}` } });
+            // SE O TOKEN TEM PIPE "|", É A API V2 (MODERNA)
+            if (token && token.includes('|')) {
+                const urlModern = `${apiBase}/api/integracao-clientes/relatorios/analitico-abastecimentos`;
+                const modernRes = await fetch(urlModern, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ data_inicial: dtIni, data_final: dtFim })
+                });
+
+                if (!modernRes.ok) throw new Error(`HTTP ${modernRes.status} (API V2) - O Token de Integração falhou ou expirou.`);
+                
+                const data = await modernRes.json();
+                if (data && data.Dados) {
+                    data.Dados.forEach(item => {
+                        if (item.Transacoes) {
+                            item.Transacoes.forEach(t => {
+                                const volume = parseFloat(t.volume || t.litragem) || 0;
+                                const valorTotal = parseFloat(t.valor_total || t.valor_unitario * volume) || 0;
+                                result.push({
+                                    estabelecimento: t.estabelecimento || t.estabelecimento_nome || 'Não informado',
+                                    cidade: t.cidade || t.estabelecimento_cidade || '',
+                                    uf: t.uf || t.estabelecimento_estado || '',
+                                    volume: volume,
+                                    valor_litro: volume > 0 ? (valorTotal / volume) : 0,
+                                    valor_total: valorTotal,
+                                    data: t.data_transacao || t.data || '',
+                                    placa: t.placa || t.veiculo_placa || 'ND',
+                                    IdTransacao: t.id_transacao || t.id || '-',
+                                    Valor: valorTotal
+                                });
+                            });
+                        }
+                    });
+                }
+                return result;
+            } 
             
-            if (!response.ok) {
-                if(response.status === 401) throw new Error(`HTTP 401 - Acesso Negado pela TruckPag. O Token pode estar inválido.`);
-                throw new Error(`Falha em /Transacoes (HTTP ${response.status})`);
-            }
+            // SE NÃO TIVER TOKEN, OU NÃO FOR V2, FAZ LOGIN MD5 E USA A API LEGADA[cite: 3]
+            if (!usuario || !senha) throw new Error("Usuário ou Senha não preenchidos.");
             
-            const textResponse = await response.text();
-            if (!textResponse || textResponse.trim() === '') return []; 
+            const senhaMD5 = md5(senha);
+            const credentials = btoa(usuario + ':' + senhaMD5);
+            
+            const authRes = await fetch(`${apiBase}/auth`, {
+                method: 'POST',
+                headers: { 'Authorization': `Basic ${credentials}` }
+            });
+            
+            if (!authRes.ok) throw new Error(`Falha no Login MD5 (HTTP ${authRes.status}).`);
+            const authData = await authRes.json();
+            token = authData.token; // Pega o JWT
+            
+            const dtIniFmt = dtIni.replace(/-/g, '');
+            const dtFimFmt = dtFim.replace(/-/g, '');
+            const urlLegacy = `${apiBase}/Transacoes?dtini=${dtIniFmt}&dtfim=${dtFimFmt}&todas=S`;
+            
+            const res = await fetch(urlLegacy, { headers: { 'Authorization': `Bearer ${token}` } });
+            if (!res.ok) throw new Error(`Falha na API Legada (HTTP ${res.status})`);
+            
+            const txt = await res.text();
+            if (!txt.trim()) return [];
             
             let raw;
-            try { raw = JSON.parse(textResponse); } catch (e) { return []; }
+            try { raw = JSON.parse(txt); } catch(e) { return []; }
             
-            const result = [];
-            const mapearDados = (t) => {
-                const volume = parseFloat(t.Litragem || t.litragem) || 0;
-                const valorTotal = parseFloat(t.Valor || t.valor) || 0;
-                return {
-                    estabelecimento: t.NomeFantasiaPosto || t.RazaoSocialPosto || t.Estabelecimento || 'Não informado',
-                    cidade: t.CidadePosto || t.Cidade || '',
-                    uf: t.UFPosto || t.UF || '',
-                    volume: volume,
-                    valor_litro: volume > 0 ? (valorTotal / volume) : 0,
-                    valor_total: valorTotal,
-                    data: t.DataTransacao || t.data || '',
-                    placa: t.Placa || t.placa || 'ND',
-                    IdTransacao: t.Transacao || '-',
-                    Valor: valorTotal
-                };
-            };
-
             if (raw.Transacoes && Array.isArray(raw.Transacoes)) {
-                raw.Transacoes.forEach(t => { if (t.Servico === 'Abastecimento') result.push(mapearDados(t)); });
+                raw.Transacoes.forEach(t => {
+                    if (t.Servico === 'Abastecimento') {
+                        const volume = parseFloat(t.Litragem) || 0;
+                        const valorTotal = parseFloat(t.Valor) || 0;
+                        result.push({
+                            estabelecimento: t.NomeFantasiaPosto || t.RazaoSocialPosto || 'Não informado',
+                            cidade: t.CidadePosto || '', uf: t.UFPosto || '', volume: volume,
+                            valor_litro: volume > 0 ? (valorTotal / volume) : 0, valor_total: valorTotal,
+                            data: t.DataTransacao || '', placa: t.Placa || 'ND',
+                            IdTransacao: t.Transacao || '-', Valor: valorTotal
+                        });
+                    }
+                });
             } else if (Array.isArray(raw)) {
-                raw.forEach(t => { if (t.Servico === 'Abastecimento' || t.Servico === 1) result.push(mapearDados(t)); });
+                raw.forEach(t => {
+                    if (t.Servico === 'Abastecimento' || t.Servico === 1) {
+                         const volume = parseFloat(t.Litragem || t.litragem) || 0;
+                         const valorTotal = parseFloat(t.Valor || t.valor) || 0;
+                         result.push({
+                            estabelecimento: t.NomeFantasiaPosto || t.Estabelecimento || 'Não informado',
+                            cidade: t.CidadePosto || t.Cidade || '', uf: t.UFPosto || t.UF || '',
+                            volume: volume, valor_litro: volume > 0 ? (valorTotal / volume) : 0,
+                            valor_total: valorTotal, data: t.DataTransacao || t.data || '',
+                            placa: t.Placa || t.placa || 'ND', IdTransacao: t.Transacao || '-', Valor: valorTotal
+                        });
+                    }
+                });
             }
             return result;
-        }
-
-        // FETCH VINCULOS E TITULOS[cite: 2, 4]
-        async function fetchPendencias(token, dtIni, dtFim) {
-            const apiBase = getApiBase();
-            let v = [], t = [];
-            try {
-                const resV = await fetchSafe(`${apiBase}/NotaFiscal/Vinculo?dtIni=${dtIni}&dtFim=${dtFim}`, { headers: { 'Authorization': `Bearer ${token}` } });
-                if(resV.ok) { const txt = await resV.text(); if(txt.trim() !== '') v = JSON.parse(txt); }
-            } catch(e) {}
-            
-            try {
-                const resT = await fetchSafe(`${apiBase}/Faturamento/Titulos?dtini=${formatAPI(dtIni)}&dtfim=${formatAPI(dtFim)}`, { headers: { 'Authorization': `Bearer ${token}` } });
-                if(resT.ok) { const txt = await resT.text(); if(txt.trim() !== '') t = JSON.parse(txt); }
-            } catch(e) {}
-            
-            return { vinculos: Array.isArray(v) ? v : [], titulos: Array.isArray(t) ? t : [] };
         }
 
         // ================================================================
@@ -604,7 +626,7 @@
         }
 
         // ================================================================
-        // 4. MAPA (HIBRIDO: SATELITE + FRONTEIRAS) E RENDERIZAÇÃO
+        // 4. MAPA HÍBRIDO (GOOGLE MAPS) E RENDERIZAÇÃO
         // ================================================================
         const coordsBrasil = {
             'MATUPA - MT': { lat: -10.584, lng: -54.928 }, 'VARZEA GRANDE - MT': { lat: -15.65, lng: -56.13 },
@@ -639,13 +661,12 @@
 
             if (mapInstance) mapInstance.remove();
             
-            const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 });
-            const satBase = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18 });
-            const satLabels = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', { maxZoom: 18 });
-            const satHybridLayer = L.layerGroup([satBase, satLabels]);
+            // O ÚNICO MAPA SATÉLITE QUE TRAZ RODOVIAS E FRONTEIRAS NATIVAMENTE NO LEAFLET É O GOOGLE MAPS HÍBRIDO (lyrs=y)
+            const googleHybrid = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxZoom: 18, attribution: '© Google' });
+            const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '© OSMap' });
 
-            mapInstance = L.map('heatmap', { layers: [satHybridLayer], zoomControl: true }).setView([-15.0, -50.0], 4);
-            L.control.layers({ "Visão Satélite (Híbrido)": satHybridLayer, "Mapa de Ruas": osmLayer }).addTo(mapInstance);
+            mapInstance = L.map('heatmap', { layers: [googleHybrid], zoomControl: true }).setView([-15.0, -50.0], 4);
+            L.control.layers({ "Visão Híbrida (Satélite + Fronteiras)": googleHybrid, "Mapa de Ruas (Simples)": osmLayer }).addTo(mapInstance);
             
             heatmapInstance = L.heatLayer(pontos, { radius: 20, blur: 15, maxZoom: 10, gradient: { 0.2: 'blue', 0.4: 'lime', 0.6: 'yellow', 0.8: 'orange', 1.0: 'red' } }).addTo(mapInstance);
             if(pontos.length > 0) mapInstance.fitBounds(pontos.map(p => [p[0], p[1]]), { padding: [30, 30] });
@@ -764,22 +785,22 @@
         function renderIntegration(type) {
             const tbody = document.getElementById('integrationBody'); const thead = document.getElementById('integrationHead');
             let rows = '';
+            // Limpa mock da tela inicial
+            if(transacoesGlobais.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center" style="padding:30px; color:var(--text-muted);">Nenhum dado pendente nesta aba.</td></tr>`;
+                return;
+            }
+            
             if(type==='transacoes'){
                 thead.innerHTML=`<tr><th class="text-left">Posto</th><th class="text-left">Data</th><th class="text-left">Placa</th><th class="text-right">Valor R$</th></tr>`;
                 const tLimit = transacoesGlobais.slice(0,50); 
                 tLimit.forEach(t => rows += `<tr><td class="text-left">${t.estabelecimento}</td><td class="text-left">${t.data}</td><td class="text-left">${t.placa}</td><td class="text-right">${fmt(t.Valor)}</td></tr>`);
-            } else if (type==='vinculos') {
-                thead.innerHTML=`<tr><th class="text-left">Chave NFe</th><th class="text-center">Operação</th><th class="text-left">Vencimento</th></tr>`;
-                dadosIntegracao.vinculos.forEach(v => rows += `<tr><td class="text-left">${v.ChaveNFe||'-'}</td><td class="text-center">${v.Operacao||'-'}</td><td class="text-left">${v.VctoPrevisto||'-'}</td></tr>`);
-            } else {
-                thead.innerHTML=`<tr><th class="text-left">ID Título</th><th class="text-left">Vencimento</th><th class="text-right">Valor R$</th></tr>`;
-                dadosIntegracao.titulos.forEach(t => rows += `<tr><td class="text-left">${t.titulo_id||'-'}</td><td class="text-left">${t.data_vencimento||'-'}</td><td class="text-right">${fmt(t.valor_total||0)}</td></tr>`);
             }
             tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center" style="padding:30px; color:var(--text-muted);">Nenhum dado pendente nesta aba.</td></tr>`;
         }
 
         // ================================================================
-        // 5. MOTOR DE CONEXÃO
+        // 5. MOTOR DE CONEXÃO E TRATAMENTO DE ERROS
         // ================================================================
         let isConnecting = false;
         async function conectar() {
@@ -789,7 +810,7 @@
             
             todosPostos = []; transacoesGlobais = [];
             document.getElementById('kpiGrid').innerHTML = '';
-            globalMsg.innerHTML = '';
+            globalMsg.innerHTML = '<div class="error-container" style="border-color: var(--brand-blue);">⏳ <b>Conectando à TruckPag...</b><br>Validando chave e puxando histórico da frota.</div>';
 
             try {
                 const usuario = document.getElementById('usuarioInput').value.trim();
@@ -799,43 +820,19 @@
                 const dtFim = document.getElementById('dataFim').value;
                 precoBaseGlobal = parseFloat(document.getElementById('precoBaseInput').value) || 7.18;
 
-                let token = tkInput;
+                uiLoader.show(20, 'Autenticando...');
+                statusMsg.innerHTML = 'Conectando...'; statusMsg.className = 'status-msg';
 
-                uiLoader.show(15, 'Validando Acesso...');
-
-                if (!token) {
-                    if (!usuario || !senha) throw new Error("Usuário ou Senha não preenchidos.");
-                    statusMsg.innerHTML = 'Gerando Autenticação MD5...'; statusMsg.className = 'status-msg';
-                    
-                    // LOGIN OFICIAL[cite: 3]
-                    const apiBase = getApiBase();
-                    const senhaMD5 = md5(senha);
-                    const credentials = btoa(usuario + ':' + senhaMD5);
-                    const resAuth = await fetchSafe(`${apiBase}/auth`, { method: 'POST', headers: { 'Authorization': `Basic ${credentials}` } });
-                    if (!resAuth.ok) throw new Error("A TruckPag negou o acesso. Verifique Usuário e Senha.");
-                    const authData = await resAuth.json();
-                    token = authData.token;
-                }
-
-                uiLoader.show(45, 'Baixando Transações da Frota...');
-                statusMsg.textContent = 'Baixando relatórios...';
-
-                // Chamadas API
-                const [transacoes, pendencias] = await Promise.all([
-                    fetchTransacoes(token, dtIni, dtFim),
-                    fetchPendencias(token, dtIni, dtFim)
-                ]);
-
-                uiLoader.show(80, 'Processando e Cruzando Dados...');
+                const transacoes = await fetchTransacoesIntegradas(tkInput, usuario, senha, dtIni, dtFim);
+                
+                uiLoader.show(70, 'Calculando Economia...');
 
                 transacoesGlobais = transacoes;
-                dadosIntegracao = pendencias;
                 
                 if(transacoes.length === 0) {
-                    globalMsg.innerHTML = `<div class="error-container" style="border-color: var(--warning);">⚠️ <b>Conexão Estabelecida!</b><br><br>Porém, <b>não há nenhum abastecimento</b> na frota entre ${dtIni.split('-').reverse().join('/')} e ${dtFim.split('-').reverse().join('/')}.<br><i>Tente aumentar o intervalo de datas.</i></div>`;
-                    statusMsg.innerHTML = `⚠️ Conectado (Zero abastecimentos)`;
+                    globalMsg.innerHTML = `<div class="error-container" style="border-color: var(--warning);">⚠️ <b>Conexão Estabelecida!</b><br><br>Não há <b>nenhum abastecimento</b> na sua frota entre ${dtIni.split('-').reverse().join('/')} e ${dtFim.split('-').reverse().join('/')}.<br><i>Tente aumentar o intervalo de datas no menu lateral.</i></div>`;
+                    statusMsg.innerHTML = `⚠️ Sem abastecimentos no período`;
                     statusMsg.className = 'status-msg warning';
-                    
                     renderOverviewCharts(); renderMainChart(currentPeriod); renderPriceChart(currentPeriod); renderAbcCharts(); renderStationsTable('all'); renderIntegration('transacoes');
                 } else {
                     globalMsg.innerHTML = '';
@@ -850,7 +847,13 @@
 
             } catch (err) {
                 console.error(err);
-                globalMsg.innerHTML = `<div class="error-container">❌ <b>Falha na Integração</b><br><br>${err.message}</div>`;
+                let dicaErro = err.message;
+                
+                if (err.message.includes('401')) {
+                    dicaErro = 'A API rejeitou seu acesso (Erro 401).<br><br><b>Como resolver:</b><br>1. Se você colou um Token no campo <b>"Token Direto"</b>, apague-o.<br>2. Verifique se o seu <b>Usuário</b> e <b>Senha</b> estão 100% corretos.<br>3. Clique em Conectar novamente.';
+                }
+                
+                globalMsg.innerHTML = `<div class="error-container">❌ <b>Falha na Integração com a TruckPag</b><br><br>${dicaErro}</div>`;
                 statusMsg.innerHTML = `❌ Erro de Conexão`; 
                 statusMsg.className = 'status-msg error';
             } finally {
@@ -861,7 +864,7 @@
         }
 
         // ================================================================
-        // 6. MOCK DE DADOS E EVENTOS
+        // 6. EVENTOS E INICIALIZAÇÃO
         // ================================================================
         document.getElementById('btnMock').addEventListener('click', () => {
             document.getElementById('globalMessageArea').innerHTML = '';
@@ -897,13 +900,11 @@
             }, 600);
         });
 
-        // Persistência de Datas
         const inInicio = document.getElementById('dataInicio');
         const inFim = document.getElementById('dataFim');
         inInicio.addEventListener('change', () => localStorage.setItem('cavalheiro_dtIni', inInicio.value));
         inFim.addEventListener('change', () => localStorage.setItem('cavalheiro_dtFim', inFim.value));
 
-        // Timer de Atualização
         document.getElementById('autoUpdateToggle').addEventListener('change', (e) => {
             if (e.target.checked) updateTimer = setInterval(conectar, 2 * 60 * 1000); 
             else clearInterval(updateTimer);
@@ -911,7 +912,6 @@
 
         document.getElementById('btnConectar').addEventListener('click', conectar);
 
-        // Abas e Filtros
         document.getElementById('navTabs').addEventListener('click', e => {
             if(e.target.closest('.nav-tab')){
                 document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));
@@ -936,7 +936,6 @@
             if(transacoesGlobais.length > 0) { renderMainChart(currentPeriod); renderPriceChart(currentPeriod); renderPeriodTable(currentPeriod); }
         }));
 
-        // Início (Ao carregar a página)
         window.onload = () => {
             const hoje = new Date(); 
             const formatDataInput = (d) => {
