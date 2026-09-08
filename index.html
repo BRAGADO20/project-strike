@@ -5,15 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CavalheiroLog - Análise de Combustível</title>
 
-    <!-- Chart.js -->
+    <!-- Chart.js & Leaflet -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <!-- Leaflet CSS e JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
 
     <style>
-        /* ===== VARIÁVEIS DE TEMA ===== */
+        /* ===== TEMA E VARIÁVEIS ===== */
         :root {
             --brand-blue: #36495d;
             --brand-orange: #ff4500;
@@ -53,121 +52,105 @@
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Roboto, system-ui, sans-serif; }
-        body { background: var(--bg-color); color: var(--text-main); min-height: 100vh; display: flex; transition: background-color 0.3s, color 0.3s; }
+        body { background: var(--bg-color); color: var(--text-main); min-height: 100vh; display: flex; transition: background-color 0.3s, color 0.3s; overflow-x: hidden; }
 
         /* ===== SIDEBAR ===== */
         .sidebar {
             width: 280px; background: var(--sidebar-bg); color: var(--text-light);
-            padding: 24px 20px; display: flex; flex-direction: column; gap: 20px;
+            padding: 20px; display: flex; flex-direction: column; gap: 15px;
             position: sticky; top: 0; height: 100vh; overflow-y: auto; flex-shrink: 0;
-            border-right: 4px solid var(--brand-orange); z-index: 10;
+            border-right: 4px solid var(--brand-orange); z-index: 20;
         }
-        .sidebar .logo-area { display: flex; justify-content: center; padding-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .sidebar .logo-area img { width: 100%; max-width: 220px; object-fit: contain; }
 
-        .login-section { display: flex; flex-direction: column; gap: 12px; background: var(--sidebar-panel); padding: 16px; border-radius: 12px; border: 1px solid var(--input-border); }
+        .login-section { display: flex; flex-direction: column; gap: 10px; background: var(--sidebar-panel); padding: 15px; border-radius: 10px; border: 1px solid var(--input-border); }
         .field { display: flex; flex-direction: column; gap: 4px; }
         .field label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.8; font-weight: 600; }
-        .field input, .field select { background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 8px; padding: 8px 12px; color: var(--text-light); font-size: 13px; outline: none; transition: 0.2s; }
+        .field input, .field select { background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 6px; padding: 8px 10px; color: var(--text-light); font-size: 13px; outline: none; transition: 0.2s; }
         .field input:focus, .field select:focus { border-color: var(--brand-orange); }
         .field select option { color: #000; }
         
-        .auto-update-toggle { display: flex; align-items: center; gap: 8px; font-size: 12px; margin-top: 5px; color: var(--brand-orange); font-weight: bold; cursor: pointer;}
-        .auto-update-toggle input { cursor: pointer; width: 16px; height: 16px; accent-color: var(--brand-orange);}
-
-        .btn-group { display: flex; gap: 8px; margin-top: 4px; flex-direction: column;}
-        .btn-group button { width: 100%; padding: 10px; border: none; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; transition: 0.2s; }
+        .btn-group { display: flex; flex-direction: column; gap: 8px; margin-top: 5px; }
+        .btn-group button { width: 100%; padding: 10px; border: none; border-radius: 6px; font-weight: 700; font-size: 13px; cursor: pointer; transition: 0.2s; }
         .btn-connect { background: var(--brand-orange); color: #fff; }
         .btn-connect:hover { background: var(--brand-orange-hover); }
         .btn-mock { background: var(--sidebar-panel); color: var(--text-light); border: 1px solid var(--input-border); }
         .btn-mock:hover { background: rgba(255,255,255,0.1); }
 
-        .status-msg { font-size: 12px; padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.2); text-align: center; font-weight: 500; min-height: 40px; display: flex; align-items: center; justify-content: center; flex-direction: column; word-break: normal; line-height: 1.4;}
-        .status-msg.error { color: #ff6b6b; border: 1px solid #ff6b6b; background: rgba(255, 107, 107, 0.1); }
-        .status-msg.success { color: #69db7c; border: 1px solid #69db7c; background: rgba(105, 219, 124, 0.1);}
-        .status-msg.info { color: #74c0fc; border: 1px solid #74c0fc; background: rgba(116, 192, 252, 0.1);}
-        .status-msg.warning { color: #f5b041; border: 1px solid #f5b041; background: rgba(245, 176, 65, 0.1);}
+        .status-msg { font-size: 11px; padding: 10px; border-radius: 6px; background: rgba(0,0,0,0.2); text-align: center; font-weight: 500; min-height: 40px; display: flex; align-items: center; justify-content: center; flex-direction: column; word-break: break-word; line-height: 1.4;}
+        .status-msg.error { color: #ff6b6b; border: 1px solid rgba(255, 107, 107, 0.3); background: rgba(255, 107, 107, 0.1); }
+        .status-msg.success { color: #69db7c; border: 1px solid rgba(105, 219, 124, 0.3); background: rgba(105, 219, 124, 0.1);}
+        .status-msg.warning { color: #f5b041; border: 1px solid rgba(245, 176, 65, 0.3); background: rgba(245, 176, 65, 0.1);}
 
-        .theme-toggle { margin-top: auto; background: transparent; border: 1px solid var(--input-border); color: var(--text-light); padding: 10px; border-radius: 8px; cursor: pointer; font-weight: 600; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .theme-toggle { margin-top: auto; background: transparent; border: 1px solid var(--input-border); color: var(--text-light); padding: 10px; border-radius: 6px; cursor: pointer; font-weight: 600; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
         .theme-toggle:hover { background: rgba(255,255,255,0.1); }
 
-        /* ===== PAINEL PRINCIPAL ===== */
-        .main-content { flex: 1; padding: 20px 30px; overflow-y: auto; height: 100vh; }
-        .dashboard { max-width: 1400px; margin: 0 auto; }
+        /* ===== PAINEL PRINCIPAL & CABEÇALHO ===== */
+        .main-content { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        
+        /* NOVO: Header com Logo e Loading Bar */
+        .top-header { background: var(--surface-color); padding: 15px 30px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); box-shadow: 0 2px 5px rgba(0,0,0,0.02); z-index: 10; position: relative;}
+        .header-logo img { height: 40px; object-fit: contain; }
+        
+        .loading-container { flex: 1; max-width: 400px; margin-left: 30px; display: none; flex-direction: column; gap: 5px; }
+        .loading-text { font-size: 11px; font-weight: 600; color: var(--brand-blue); text-transform: uppercase; letter-spacing: 0.5px;}
+        .progress-bar-bg { width: 100%; height: 6px; background: var(--border-color); border-radius: 10px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; width: 0%; background: var(--brand-orange); transition: width 0.4s ease; }
 
-        .nav-tabs { display: flex; gap: 6px; margin-bottom: 28px; background: var(--surface-color); padding: 8px; border-radius: 12px; box-shadow: var(--card-shadow); flex-wrap: wrap; border-left: 4px solid var(--brand-orange); }
-        .nav-tab { padding: 10px 20px; border: none; background: transparent; border-radius: 8px; font-weight: 600; font-size: 14px; color: var(--text-muted); cursor: pointer; transition: 0.2s; display: flex; align-items: center; }
+        .dashboard { flex: 1; padding: 20px 30px; overflow-y: auto; }
+
+        /* NAVEGAÇÃO */
+        .nav-tabs { display: flex; gap: 6px; margin-bottom: 25px; background: var(--surface-color); padding: 6px; border-radius: 8px; box-shadow: var(--card-shadow); flex-wrap: wrap; border-left: 3px solid var(--brand-orange); }
+        .nav-tab { padding: 8px 16px; border: none; background: transparent; border-radius: 6px; font-weight: 600; font-size: 13px; color: var(--text-muted); cursor: pointer; transition: 0.2s; }
         .nav-tab:hover { background: var(--bg-color); color: var(--text-main); }
         .nav-tab.active { background: var(--brand-blue); color: #fff; }
 
         /* KPIs */
-        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 28px; }
-        .kpi-card { background: var(--surface-color); border-radius: 12px; padding: 16px 20px; box-shadow: var(--card-shadow); border-left: 4px solid var(--brand-blue); transition: transform 0.2s; }
-        .kpi-card:hover { transform: translateY(-3px); }
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .kpi-card { background: var(--surface-color); border-radius: 8px; padding: 15px; box-shadow: var(--card-shadow); border-left: 4px solid var(--brand-blue); }
         .kpi-card .label { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-muted); }
-        .kpi-card .value { font-size: 22px; font-weight: 700; color: var(--text-main); margin-top: 4px; }
-        .kpi-card .sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+        .kpi-card .value { font-size: 20px; font-weight: 700; color: var(--text-main); margin-top: 4px; }
+        .kpi-card .sub { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
         .kpi-card.highlight { background: var(--brand-blue); border-left-color: var(--brand-orange); }
         .kpi-card.highlight .label, .kpi-card.highlight .value, .kpi-card.highlight .sub { color: #fff; }
 
-        .class-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
-        .class-card { background: var(--surface-color); border-radius: 12px; padding: 18px; box-shadow: var(--card-shadow); border-top: 4px solid var(--success); }
-        .class-card.class-B { border-top-color: var(--warning); }
-        .class-card.class-C { border-top-color: var(--danger); }
-        .class-card .title { font-size: 15px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px; }
-        .class-card .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
-        .class-card .stats .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; }
-        .class-card .stats .value { font-size: 14px; font-weight: 700; color: var(--text-main); }
-
-        /* Gráficos & Containers */
+        /* Gráficos */
         .tab-content { display: none; animation: fadeIn 0.3s ease; }
         .tab-content.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        .charts-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 28px; }
+        .charts-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 25px; }
         .charts-grid.one-col { grid-template-columns: 1fr; }
-        .chart-box { background: var(--surface-color); border-radius: 12px; padding: 20px; box-shadow: var(--card-shadow); }
-        .chart-box h3 { font-size: 15px; font-weight: 600; color: var(--text-main); margin-bottom: 16px; }
-        .chart-container { position: relative; height: 320px; }
-        .chart-container.map { height: 500px; border-radius: 8px; overflow: hidden; position: relative; background: #c8d3db; }
-
-        .map-legend { position: absolute; bottom: 20px; left: 20px; background: rgba(255,255,255,0.9); padding: 10px 15px; border-radius: 8px; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
-        [data-theme="dark"] .map-legend { background: rgba(30,41,59,0.9); color: #fff; }
-        .legend-gradient { width: 150px; height: 12px; background: linear-gradient(to right, blue, lime, yellow, orange, red); border-radius: 4px; margin-top: 5px;}
-        .legend-labels { display: flex; justify-content: space-between; font-size: 10px; margin-top: 4px; font-weight: bold; }
+        .chart-box { background: var(--surface-color); border-radius: 8px; padding: 20px; box-shadow: var(--card-shadow); }
+        .chart-box h3 { font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 15px; }
+        .chart-container { position: relative; height: 300px; }
+        .chart-container.map { height: 450px; border-radius: 6px; overflow: hidden; background: #c8d3db; }
 
         /* Tabelas */
-        .table-wrap { background: var(--surface-color); border-radius: 12px; padding: 20px; box-shadow: var(--card-shadow); overflow-x: auto; margin-bottom: 28px; }
-        .table-wrap h3 { font-size: 15px; font-weight: 600; color: var(--text-main); margin-bottom: 16px; }
-        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .table-wrap { background: var(--surface-color); border-radius: 8px; padding: 20px; box-shadow: var(--card-shadow); overflow-x: auto; margin-bottom: 25px; }
+        .table-wrap h3 { font-size: 14px; font-weight: 600; color: var(--text-main); margin-bottom: 15px; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
         thead { background: var(--table-header); position: sticky; top: 0; z-index: 5; }
-        th { padding: 12px; font-weight: 600; color: var(--text-main); border-bottom: 2px solid var(--border-color); white-space: nowrap; font-size: 12px; text-transform: uppercase; }
-        td { padding: 10px 12px; border-bottom: 1px solid var(--border-color); color: var(--text-main); }
+        th { padding: 10px; font-weight: 600; color: var(--text-main); border-bottom: 2px solid var(--border-color); white-space: nowrap; text-transform: uppercase; }
+        td { padding: 10px; border-bottom: 1px solid var(--border-color); color: var(--text-main); }
         tr:hover td { background: var(--table-hover); }
 
         .text-left { text-align: left; } .text-right { text-align: right; } .text-center { text-align: center; }
-        .text-green { color: var(--success); font-weight: 700; }
-        .text-danger { color: var(--danger); font-weight: 700; }
-        .badge-abc { padding: 2px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; color: #fff; }
+        .text-green { color: var(--success); font-weight: 700; } .text-danger { color: var(--danger); font-weight: 700; }
+        .badge-abc { padding: 2px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; color: #fff; }
         .badge-abc.A { background: var(--success); } .badge-abc.B { background: var(--warning); } .badge-abc.C { background: var(--danger); }
-        
-        .filter-bar { display: flex; gap: 10px; margin-bottom: 20px; align-items: center; }
-        .period-btn { padding: 6px 16px; border: 1px solid var(--border-color); border-radius: 20px; background: var(--surface-color); color: var(--text-main); font-size: 13px; cursor: pointer; transition: 0.2s; font-weight: 600;}
-        .period-btn:hover { background: var(--bg-color); }
-        .period-btn.active { background: var(--brand-blue); color: #fff; border-color: var(--brand-blue); }
         .total-row td { background: var(--table-header) !important; font-weight: bold; border-top: 2px solid var(--brand-blue); }
         
-        .error-container { text-align: center; padding: 40px; background: var(--surface-color); border-radius: 12px; border: 2px dashed var(--danger); color: var(--text-main); line-height: 1.6;}
+        .filter-bar { display: flex; gap: 8px; margin-bottom: 15px; align-items: center; }
+        .period-btn { padding: 6px 14px; border: 1px solid var(--border-color); border-radius: 20px; background: var(--surface-color); color: var(--text-main); font-size: 12px; cursor: pointer; transition: 0.2s; font-weight: 600;}
+        .period-btn.active { background: var(--brand-blue); color: #fff; border-color: var(--brand-blue); }
+
+        .error-container { text-align: center; padding: 40px; background: var(--surface-color); border-radius: 8px; border: 2px dashed var(--border-color); color: var(--text-main); line-height: 1.6; margin-bottom: 20px;}
     </style>
 </head>
 <body>
 
     <!-- ===== SIDEBAR ===== -->
     <div class="sidebar">
-        <div class="logo-area">
-            <img src="cavalheiro-logistics.png" alt="Cavalheiro Log" onerror="this.style.display='none'">
-        </div>
-
         <div class="login-section">
             <div class="field">
                 <label>🌐 Ambiente TruckPag</label>
@@ -177,7 +160,6 @@
                 </select>
             </div>
             
-            <!-- Usuário e Senha DESOCULTADOS para forçar a API a gerar o token correto (Legado JWT) -->
             <div class="field">
                 <label>👤 Usuário</label>
                 <input type="text" id="usuarioInput" placeholder="Usuário" value="CAVALHEIRO.LOGISTICS">
@@ -187,10 +169,9 @@
                 <input type="password" id="senhaInput" placeholder="Senha" value="2Xuzj@r4#">
             </div>
             
-            <!-- Token mantido como fallback visual -->
             <div class="field" style="margin-top: 5px;">
-                <label>🔐 Token (Plano B)</label>
-                <input type="text" id="tokenInput" placeholder="Token" value="304|NkyqZedQlyrTLjItQj9tU8sK8YjgvReDs4euHJBD">
+                <label>🔐 Token (Opção p/ Bypass CORS)</label>
+                <input type="text" id="tokenInput" placeholder="Deixe em branco para usar Login" value="304|NkyqZedQlyrTLjItQj9tU8sK8YjgvReDs4euHJBD">
             </div>
             
             <div class="field" style="margin-top: 10px;">
@@ -206,14 +187,13 @@
                 <input type="number" id="precoBaseInput" value="7.18" step="0.01">
             </div>
 
-            <label class="auto-update-toggle">
-                <input type="checkbox" id="autoUpdateToggle">
-                Atualização Automática (2 min)
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 11px; margin-top: 5px; color: var(--brand-orange); font-weight: bold; cursor: pointer;">
+                <input type="checkbox" id="autoUpdateToggle"> Auto-Atualizar (2 min)
             </label>
             
             <div class="btn-group">
                 <button class="btn-connect" id="btnConectar">Conectar API TruckPag</button>
-                <button class="btn-mock" id="btnMock">Usar Mock (Testes)</button>
+                <button class="btn-mock" id="btnMock">Visualizar Teste (Mock)</button>
             </div>
             
             <div class="status-msg info" id="statusMsg">Pronto para conectar</div>
@@ -224,22 +204,34 @@
 
     <!-- ===== PAINEL PRINCIPAL ===== -->
     <div class="main-content">
+        
+        <!-- HEADER COM LOGO E LOADING -->
+        <header class="top-header">
+            <div class="header-logo">
+                <img src="cavalheiro-logistics.png" alt="Cavalheiro Log" onerror="this.src='https://via.placeholder.com/200x50/36495d/ffffff?text=Cavalheiro+Logistics'">
+            </div>
+            <div class="loading-container" id="loadingContainer">
+                <div class="loading-text" id="loadingText">Conectando...</div>
+                <div class="progress-bar-bg">
+                    <div class="progress-bar-fill" id="progressBar"></div>
+                </div>
+            </div>
+        </header>
+
         <div class="dashboard">
 
             <!-- NAVEGAÇÃO -->
             <div class="nav-tabs" id="navTabs">
                 <button class="nav-tab active" data-tab="tab-overview">📊 Visão Geral</button>
-                <button class="nav-tab" data-tab="tab-temporal">📈 Evolução (Oscilação)</button>
+                <button class="nav-tab" data-tab="tab-temporal">📈 Evolução</button>
                 <button class="nav-tab" data-tab="tab-abc">📉 Curva ABC</button>
                 <button class="nav-tab" data-tab="tab-stations">🏢 Análise de Postos</button>
                 <button class="nav-tab" data-tab="tab-heatmap">🔥 Mapa de Calor</button>
-                <button class="nav-tab" data-tab="tab-integration">🔗 Pendências API</button>
+                <button class="nav-tab" data-tab="tab-integration">🔗 Integração ERP</button>
             </div>
 
-            <!-- MENSAGEM GLOBAL DE ERRO / LOADING -->
             <div id="globalMessageArea"></div>
 
-            <!-- KPIs -->
             <div class="kpi-grid" id="kpiGrid"></div>
 
             <!-- ABAS -->
@@ -264,8 +256,8 @@
 
             <div id="tab-temporal" class="tab-content">
                 <div class="filter-bar">
-                    <span style="font-weight: 600; color: var(--text-main); font-size: 13px;">Analisar Oscilação:</span>
-                    <button class="period-btn active" data-period="daily">Diário (Dia a Dia)</button>
+                    <span style="font-weight: 600; font-size: 12px;">Agrupar:</span>
+                    <button class="period-btn active" data-period="daily">Diário</button>
                     <button class="period-btn" data-period="weekly">Semana</button>
                     <button class="period-btn" data-period="monthly">Mês</button>
                 </div>
@@ -275,20 +267,20 @@
                         <div class="chart-container"><canvas id="mainChart"></canvas></div>
                     </div>
                     <div class="chart-box">
-                        <h3>📉 Oscilação do Preço Médio Pago (R$/L)</h3>
+                        <h3>📉 Oscilação do Preço Médio (R$/L)</h3>
                         <div class="chart-container"><canvas id="priceChart"></canvas></div>
                     </div>
                 </div>
                 <div class="table-wrap">
-                    <h3>📋 Detalhamento Financeiro da Oscilação</h3>
+                    <h3>📋 Detalhamento Financeiro</h3>
                     <table>
                         <thead>
                             <tr>
-                                <th class="text-left">Período Selecionado</th>
-                                <th class="text-right">Volume Abastecido (L)</th>
-                                <th class="text-right">Preço Médio Gasto (R$)</th>
-                                <th class="text-right">Custo Total (R$)</th>
-                                <th class="text-right">Economia Realizada (R$)</th>
+                                <th class="text-left">Período</th>
+                                <th class="text-right">Volume (L)</th>
+                                <th class="text-right">Preço Médio</th>
+                                <th class="text-right">Custo Total</th>
+                                <th class="text-right">Economia Realizada</th>
                             </tr>
                         </thead>
                         <tbody id="periodTableBody"></tbody>
@@ -299,11 +291,11 @@
             <div id="tab-abc" class="tab-content">
                 <div class="charts-grid">
                     <div class="chart-box">
-                        <h3>📊 Curva ABC de Concentração de Gastos</h3>
+                        <h3>📊 Curva ABC de Concentração</h3>
                         <div class="chart-container"><canvas id="abcChart"></canvas></div>
                     </div>
                     <div class="chart-box">
-                        <h3>📊 Participação de Volume por Classe</h3>
+                        <h3>📊 Volume por Classe</h3>
                         <div class="chart-container"><canvas id="abcPieChart"></canvas></div>
                     </div>
                 </div>
@@ -311,27 +303,26 @@
 
             <div id="tab-stations" class="tab-content">
                 <div class="filter-bar">
-                    <span style="font-weight: 600; color: var(--text-main); font-size: 13px;">Filtrar Classe:</span>
+                    <span style="font-weight: 600; font-size: 12px;">Filtro:</span>
                     <button class="period-btn active" data-filter="all">Todas</button>
                     <button class="period-btn" data-filter="A">Classe A</button>
                     <button class="period-btn" data-filter="B">Classe B</button>
                     <button class="period-btn" data-filter="C">Classe C</button>
-                    <span style="margin-left:auto; font-size:12px; color:var(--text-muted);" id="stationCount"></span>
                 </div>
                 <div class="table-wrap">
-                    <h3>📋 Detalhamento Analítico por Posto</h3>
+                    <h3>📋 Analítico por Posto</h3>
                     <table>
                         <thead>
                             <tr>
                                 <th class="text-left">Rank</th>
-                                <th class="text-left">Posto Atendido</th>
+                                <th class="text-left">Posto</th>
                                 <th class="text-left">Cidade/UF</th>
-                                <th class="text-center">Caminhões</th>
+                                <th class="text-center">Veículos</th>
                                 <th class="text-right">Volume (L)</th>
                                 <th class="text-right">Preço Médio</th>
-                                <th class="text-right">Custo Total (R$)</th>
-                                <th class="text-right">Economia (R$)</th>
-                                <th class="text-center">Classe</th>
+                                <th class="text-right">Custo Total</th>
+                                <th class="text-right">Economia</th>
+                                <th class="text-center">ABC</th>
                             </tr>
                         </thead>
                         <tbody id="stationsTableBody"></tbody>
@@ -342,27 +333,20 @@
             <div id="tab-heatmap" class="tab-content">
                 <div class="charts-grid one-col">
                     <div class="chart-box">
-                        <h3>🔥 Densidade de Abastecimento (Rotas & Regiões)</h3>
-                        <div class="chart-container map">
-                            <div id="heatmap" style="height:100%;width:100%;"></div>
-                            <div class="map-legend">
-                                <div class="legend-title" style="font-size:11px; color:#333;">Volume de Abastecimento</div>
-                                <div class="legend-gradient"></div>
-                                <div class="legend-labels" style="color:#333;"><span>Baixo</span><span>Alto</span></div>
-                            </div>
-                        </div>
+                        <h3>🔥 Densidade de Rotas</h3>
+                        <div class="chart-container map"><div id="heatmap" style="height:100%;width:100%;"></div></div>
                     </div>
                 </div>
                 <div class="table-wrap">
-                    <h3>📊 Resumo de Consumo por Estado (UF)</h3>
+                    <h3>📊 Resumo por Estado</h3>
                     <table>
                         <thead>
                             <tr>
                                 <th class="text-left">Estado</th>
                                 <th class="text-right">Volume Total (L)</th>
                                 <th class="text-right">Representatividade</th>
-                                <th class="text-right">Preço Médio (R$)</th>
-                                <th class="text-right">Economia Total (R$)</th>
+                                <th class="text-right">Preço Médio</th>
+                                <th class="text-right">Economia Total</th>
                             </tr>
                         </thead>
                         <tbody id="stateTableBody"></tbody>
@@ -372,13 +356,13 @@
 
             <div id="tab-integration" class="tab-content">
                 <div class="filter-bar">
-                    <span style="font-weight: 600; color: var(--text-main); font-size: 13px;">Visão:</span>
+                    <span style="font-weight: 600; font-size: 12px;">Visão:</span>
                     <button class="period-btn active" data-integration="transacoes">Transações Soltas</button>
                     <button class="period-btn" data-integration="vinculos">Vínculos Faltantes</button>
                     <button class="period-btn" data-integration="titulos">Títulos Pendentes</button>
                 </div>
                 <div class="table-wrap">
-                    <h3 id="integrationTitle">📋 Dados Pendentes de Integração ERP</h3>
+                    <h3 id="integrationTitle">📋 Pendências ERP</h3>
                     <table>
                         <thead id="integrationHead"></thead>
                         <tbody id="integrationBody"></tbody>
@@ -391,7 +375,7 @@
 
     <script>
         // ================================================================
-        // 0. MD5 PARA LOGIN TRUCKPAG
+        // 0. MD5 (DOCUMENTAÇÃO OFICIAL TRUCKPAG)
         // ================================================================
         function md5(string) {
             function md5RotateLeft(lValue, iShiftBits) { return (lValue << iShiftBits) | (lValue >>> (32 - iShiftBits)); }
@@ -445,7 +429,7 @@
         }
 
         // ================================================================
-        // 1. TEMA E UI
+        // 1. TEMA, UI E BARRA DE LOADING
         // ================================================================
         const themeToggle = document.getElementById('themeToggle');
         let isDarkMode = false;
@@ -454,10 +438,8 @@
             isDarkMode = !isDarkMode;
             document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
             themeToggle.textContent = isDarkMode ? '☀️ Modo Claro' : '🌙 Modo Escuro';
-            
             Chart.defaults.color = isDarkMode ? '#94a3b8' : '#6b7a8f';
             Chart.defaults.scale.grid.color = isDarkMode ? '#334155' : '#eef0f3';
-            
             if (todosPostos.length > 0) { renderOverviewCharts(); renderMainChart(currentPeriod); renderPriceChart(currentPeriod); renderAbcCharts(); }
         });
 
@@ -465,48 +447,52 @@
         Chart.defaults.color = '#6b7a8f';
         Chart.defaults.scale.grid.color = '#eef0f3';
 
+        const uiLoader = {
+            show: (pct, text) => {
+                document.getElementById('loadingContainer').style.display = 'flex';
+                document.getElementById('progressBar').style.width = pct + '%';
+                document.getElementById('loadingText').textContent = text;
+            },
+            hide: () => {
+                setTimeout(() => { document.getElementById('loadingContainer').style.display = 'none'; }, 800);
+            }
+        }
+
         // ================================================================
         // 2. CONFIGURAÇÃO E AUTENTICAÇÃO (TRUCKPAG API)
         // ================================================================
         function getApiBase() { return document.getElementById('envSelect').value === 'apihml' ? 'https://apihomo.truckpag.com.br' : 'https://api.truckpag.com.br'; }
-        
-        // Retorna YYYYMMDD (formato exigido na API Legada documentada no PDF)
-        function formatAPI(dateStr) { return dateStr.replace(/-/g, ''); }
+        function formatAPI(dateStr) { return dateStr.replace(/-/g, ''); } // Para endpoints legados
+
+        // BYPASS DE CORS AUTOMÁTICO (Caso o navegador bloqueie a requisição nativa)
+        async function fetchSafe(url, options) {
+            try {
+                const res = await fetch(url, options);
+                return res;
+            } catch (error) {
+                if (error.message.includes('Failed to fetch') || error.message.includes('CORS')) {
+                    console.warn("CORS bloqueado na rota principal. Acionando Proxy de segurança...");
+                    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+                    return await fetch(proxyUrl, options);
+                }
+                throw error;
+            }
+        }
 
         let transacoesGlobais = [], todosPostos = [], dadosIntegracao = { transacoes: [], vinculos: [], titulos: [] };
         let precoBaseGlobal = 7.18, currentPeriod = 'daily', currentFilter = 'all', currentIntegration = 'transacoes';
         let mapInstance = null, heatmapInstance = null;
         let updateTimer = null;
 
-        // REALIZA O LOGIN OFICIAL (MD5) DE ACORDO COM O MANUAL PARA OBTER O TOKEN JWT (O ÚNICO ACEITO PELAS ROTAS LEGADAS)
-        async function obterToken(usuario, senha) {
-            const apiBase = getApiBase();
-            const senhaMD5 = md5(senha);
-            const credentials = btoa(usuario + ':' + senhaMD5);
-            
-            const response = await fetch(`${apiBase}/auth`, {
-                method: 'POST',
-                headers: { 'Authorization': `Basic ${credentials}` }
-            });
-            
-            if (!response.ok) {
-                throw new Error(`Falha no Login (HTTP ${response.status}).`);
-            }
-            
-            const data = await response.json();
-            if (!data.token) throw new Error('Token não retornado pela API TruckPag.');
-            return data.token; // Retorna o Token JWT oficial.
-        }
-
-        // FETCH TRANSAÇÕES OFICIAL (USANDO APENAS A ROTA /Transacoes DO PDF)
-        async function fetchTransacoesLegado(token, dtIni, dtFim) {
+        // FETCH TRANSAÇÕES (Seguindo Documentação TruckPag)[cite: 3]
+        async function fetchTransacoes(token, dtIni, dtFim) {
             const apiBase = getApiBase();
             const url = `${apiBase}/Transacoes?dtini=${formatAPI(dtIni)}&dtfim=${formatAPI(dtFim)}&todas=S`;
             
-            const response = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+            const response = await fetchSafe(url, { headers: { 'Authorization': `Bearer ${token}` } });
             
             if (!response.ok) {
-                if(response.status === 401) throw new Error(`HTTP 401 - Acesso Negado.`);
+                if(response.status === 401) throw new Error(`HTTP 401 - Acesso Negado pela TruckPag. O Token pode estar inválido.`);
                 throw new Error(`Falha em /Transacoes (HTTP ${response.status})`);
             }
             
@@ -517,50 +503,42 @@
             try { raw = JSON.parse(textResponse); } catch (e) { return []; }
             
             const result = [];
-            
+            const mapearDados = (t) => {
+                const volume = parseFloat(t.Litragem || t.litragem) || 0;
+                const valorTotal = parseFloat(t.Valor || t.valor) || 0;
+                return {
+                    estabelecimento: t.NomeFantasiaPosto || t.RazaoSocialPosto || t.Estabelecimento || 'Não informado',
+                    cidade: t.CidadePosto || t.Cidade || '',
+                    uf: t.UFPosto || t.UF || '',
+                    volume: volume,
+                    valor_litro: volume > 0 ? (valorTotal / volume) : 0,
+                    valor_total: valorTotal,
+                    data: t.DataTransacao || t.data || '',
+                    placa: t.Placa || t.placa || 'ND',
+                    IdTransacao: t.Transacao || '-',
+                    Valor: valorTotal
+                };
+            };
+
             if (raw.Transacoes && Array.isArray(raw.Transacoes)) {
-                raw.Transacoes.forEach(t => {
-                    if (t.Servico === 'Abastecimento') {
-                        const volume = parseFloat(t.Litragem) || 0;
-                        const valorTotal = parseFloat(t.Valor) || 0;
-                        result.push({
-                            estabelecimento: t.NomeFantasiaPosto || t.RazaoSocialPosto || 'Não informado',
-                            cidade: t.CidadePosto || '', uf: t.UFPosto || '', volume: volume,
-                            valor_litro: volume > 0 ? (valorTotal / volume) : 0, valor_total: valorTotal,
-                            data: t.DataTransacao || '', placa: t.Placa || 'ND',
-                            IdTransacao: t.Transacao || '-', Valor: valorTotal
-                        });
-                    }
-                });
+                raw.Transacoes.forEach(t => { if (t.Servico === 'Abastecimento') result.push(mapearDados(t)); });
             } else if (Array.isArray(raw)) {
-                raw.forEach(t => {
-                    if (t.Servico === 'Abastecimento' || t.Servico === 1) {
-                         const volume = parseFloat(t.Litragem || t.litragem) || 0;
-                         const valorTotal = parseFloat(t.Valor || t.valor) || 0;
-                         result.push({
-                            estabelecimento: t.NomeFantasiaPosto || t.Estabelecimento || 'Não informado',
-                            cidade: t.CidadePosto || t.Cidade || '', uf: t.UFPosto || t.UF || '',
-                            volume: volume, valor_litro: volume > 0 ? (valorTotal / volume) : 0,
-                            valor_total: valorTotal, data: t.DataTransacao || t.data || '',
-                            placa: t.Placa || t.placa || 'ND', IdTransacao: t.Transacao || '-', Valor: valorTotal
-                        });
-                    }
-                });
+                raw.forEach(t => { if (t.Servico === 'Abastecimento' || t.Servico === 1) result.push(mapearDados(t)); });
             }
             return result;
         }
 
-        // FETCH VINCULOS E TITULOS
+        // FETCH VINCULOS E TITULOS[cite: 2, 4]
         async function fetchPendencias(token, dtIni, dtFim) {
             const apiBase = getApiBase();
             let v = [], t = [];
             try {
-                const resV = await fetch(`${apiBase}/NotaFiscal/Vinculo?dtIni=${dtIni}&dtFim=${dtFim}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                const resV = await fetchSafe(`${apiBase}/NotaFiscal/Vinculo?dtIni=${dtIni}&dtFim=${dtFim}`, { headers: { 'Authorization': `Bearer ${token}` } });
                 if(resV.ok) { const txt = await resV.text(); if(txt.trim() !== '') v = JSON.parse(txt); }
             } catch(e) {}
             
             try {
-                const resT = await fetch(`${apiBase}/Faturamento/Titulos?dtini=${formatAPI(dtIni)}&dtfim=${formatAPI(dtFim)}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                const resT = await fetchSafe(`${apiBase}/Faturamento/Titulos?dtini=${formatAPI(dtIni)}&dtfim=${formatAPI(dtFim)}`, { headers: { 'Authorization': `Bearer ${token}` } });
                 if(resT.ok) { const txt = await resT.text(); if(txt.trim() !== '') t = JSON.parse(txt); }
             } catch(e) {}
             
@@ -568,7 +546,7 @@
         }
 
         // ================================================================
-        // 3. PROCESSAMENTO E AGRUPAMENTO (OSCILAÇÃO)
+        // 3. PROCESSAMENTO E AGRUPAMENTO
         // ================================================================
         function processarPostos(transacoes, precoBase) {
             const map = new Map();
@@ -661,8 +639,8 @@
 
             if (mapInstance) mapInstance.remove();
             
-            const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '© OSMap' });
-            const satBase = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18, attribution: '© Esri' });
+            const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 });
+            const satBase = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18 });
             const satLabels = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', { maxZoom: 18 });
             const satHybridLayer = L.layerGroup([satBase, satLabels]);
 
@@ -702,7 +680,6 @@
         function renderStationsTable(filter) {
             const tbody = document.getElementById('stationsTableBody'); tbody.innerHTML = '';
             let filtered = filter === 'all' ? todosPostos : todosPostos.filter(p => p.abc === filter);
-            document.getElementById('stationCount').textContent = `${filtered.length} postos listados`;
             if (filtered.length === 0) return;
             let tv=0, tc=0, te=0, tcam=0;
 
@@ -802,7 +779,7 @@
         }
 
         // ================================================================
-        // 5. MOTOR DE CONEXÃO E TRATAMENTO DE ERROS (DUPLA TENTATIVA)
+        // 5. MOTOR DE CONEXÃO
         // ================================================================
         let isConnecting = false;
         async function conectar() {
@@ -812,7 +789,7 @@
             
             todosPostos = []; transacoesGlobais = [];
             document.getElementById('kpiGrid').innerHTML = '';
-            globalMsg.innerHTML = '<div class="error-container" style="border-color: var(--brand-blue);">⏳ <b>Conectando à TruckPag...</b><br>Baixando e processando os dados de frota.</div>';
+            globalMsg.innerHTML = '';
 
             try {
                 const usuario = document.getElementById('usuarioInput').value.trim();
@@ -823,44 +800,39 @@
                 precoBaseGlobal = parseFloat(document.getElementById('precoBaseInput').value) || 7.18;
 
                 let token = tkInput;
-                let usouLoginMD5 = false;
 
-                // 1. SE O USUÁRIO NÃO COLOCOU TOKEN MANUAL, USA O LOGIN MD5 (DOCUMENTAÇÃO OFICIAL)
+                uiLoader.show(15, 'Validando Acesso...');
+
                 if (!token) {
-                    if (!usuario || !senha) throw new Error("Preencha o Usuário e Senha (ou cole um Token válido).");
-                    statusMsg.innerHTML = 'Autenticando via Login...'; statusMsg.className = 'status-msg';
-                    token = await obterToken(usuario, senha);
-                    usouLoginMD5 = true;
+                    if (!usuario || !senha) throw new Error("Usuário ou Senha não preenchidos.");
+                    statusMsg.innerHTML = 'Gerando Autenticação MD5...'; statusMsg.className = 'status-msg';
+                    
+                    // LOGIN OFICIAL[cite: 3]
+                    const apiBase = getApiBase();
+                    const senhaMD5 = md5(senha);
+                    const credentials = btoa(usuario + ':' + senhaMD5);
+                    const resAuth = await fetchSafe(`${apiBase}/auth`, { method: 'POST', headers: { 'Authorization': `Basic ${credentials}` } });
+                    if (!resAuth.ok) throw new Error("A TruckPag negou o acesso. Verifique Usuário e Senha.");
+                    const authData = await resAuth.json();
+                    token = authData.token;
                 }
 
+                uiLoader.show(45, 'Baixando Transações da Frota...');
                 statusMsg.textContent = 'Baixando relatórios...';
 
-                // 2. TENTA BUSCAR TRANSAÇÕES
-                let transacoes = [];
-                try {
-                    transacoes = await fetchTransacoesLegado(token, dtIni, dtFim);
-                } catch (err) {
-                    // SE O ERRO FOR 401 E O USUÁRIO ESTAVA USANDO O TOKEN MANUAL V2 "304|..."
-                    if (err.message.includes('401') && !usouLoginMD5 && usuario && senha) {
-                        console.warn("Token manual rejeitado. Fallback: Autenticando via Usuário/Senha (MD5)...");
-                        statusMsg.innerHTML = 'Token manual não compatível com API Legada.<br>Autenticando via Login MD5...';
-                        
-                        // IGNORA O TOKEN MANUAL E GERA UM NOVO JWT AUTÊNTICO 
-                        token = await obterToken(usuario, senha);
-                        transacoes = await fetchTransacoesLegado(token, dtIni, dtFim);
-                    } else {
-                        throw err; // Se falhou por outro motivo ou se o próprio MD5 deu 401, lança o erro.
-                    }
-                }
+                // Chamadas API
+                const [transacoes, pendencias] = await Promise.all([
+                    fetchTransacoes(token, dtIni, dtFim),
+                    fetchPendencias(token, dtIni, dtFim)
+                ]);
 
-                // 3. BUSCA PENDÊNCIAS COM O TOKEN GARANTIDO (O JWT)
-                const pendencias = await fetchPendencias(token, dtIni, dtFim);
+                uiLoader.show(80, 'Processando e Cruzando Dados...');
 
                 transacoesGlobais = transacoes;
                 dadosIntegracao = pendencias;
                 
                 if(transacoes.length === 0) {
-                    globalMsg.innerHTML = `<div class="error-container" style="border-color: var(--warning);">⚠️ <b>Conexão Estabelecida com Sucesso!</b><br><br>A TruckPag não retornou <b>nenhum abastecimento</b> na sua frota entre ${dtIni.split('-').reverse().join('/')} e ${dtFim.split('-').reverse().join('/')}.<br><br><i>Tente aumentar o intervalo de datas.</i></div>`;
+                    globalMsg.innerHTML = `<div class="error-container" style="border-color: var(--warning);">⚠️ <b>Conexão Estabelecida!</b><br><br>Porém, <b>não há nenhum abastecimento</b> na frota entre ${dtIni.split('-').reverse().join('/')} e ${dtFim.split('-').reverse().join('/')}.<br><i>Tente aumentar o intervalo de datas.</i></div>`;
                     statusMsg.innerHTML = `⚠️ Conectado (Zero abastecimentos)`;
                     statusMsg.className = 'status-msg warning';
                     
@@ -868,6 +840,7 @@
                 } else {
                     globalMsg.innerHTML = '';
                     todosPostos = processarPostos(transacoes, precoBaseGlobal);
+                    
                     renderKpis(); renderStationsTable(currentFilter); renderOverviewCharts(); renderHeatmap(); renderIntegration('transacoes');
                     renderMainChart(currentPeriod); renderPriceChart(currentPeriod); renderPeriodTable(currentPeriod); renderAbcCharts();
                     
@@ -877,55 +850,68 @@
 
             } catch (err) {
                 console.error(err);
-                globalMsg.innerHTML = `<div class="error-container">❌ <b>Falha na Conexão com a TruckPag</b><br><br>${err.message}</div>`;
+                globalMsg.innerHTML = `<div class="error-container">❌ <b>Falha na Integração</b><br><br>${err.message}</div>`;
                 statusMsg.innerHTML = `❌ Erro de Conexão`; 
                 statusMsg.className = 'status-msg error';
-                
             } finally {
                 isConnecting = false;
+                uiLoader.show(100, 'Concluído!');
+                uiLoader.hide();
             }
         }
 
         // ================================================================
-        // 6. EVENTOS E INICIALIZAÇÃO
+        // 6. MOCK DE DADOS E EVENTOS
         // ================================================================
+        document.getElementById('btnMock').addEventListener('click', () => {
+            document.getElementById('globalMessageArea').innerHTML = '';
+            uiLoader.show(20, 'Gerando Dados Fictícios...');
+            
+            setTimeout(() => {
+                transacoesGlobais = [];
+                const pBase = parseFloat(document.getElementById('precoBaseInput').value) || 7.18;
+                for(let i=0; i<150; i++) {
+                    const vol = 200 + Math.random()*2000; const p = 6.0 + Math.random()*1.5;
+                    const cidades = [['MATUPA - MT','MT'], ['FERNANDOPOLIS - SP','SP'], ['CUIABA - MT','MT'], ['SAO JOSE DOS PINHAIS - PR','PR']];
+                    const c = cidades[Math.floor(Math.random()*4)];
+                    const tDate = new Date(Date.now() - Math.random() * 7 * 86400000); 
+                    const isoDate = `${tDate.getFullYear()}-${String(tDate.getMonth()+1).padStart(2,'0')}-${String(tDate.getDate()).padStart(2,'0')} 12:00:00.000`;
+                    
+                    transacoesGlobais.push({
+                        estabelecimento: 'POSTO TESTE ' + c[0], cidade: c[0].split(' - ')[0], uf: c[1],
+                        volume: vol, valor_litro: p, valor_total: vol*p,
+                        data: isoDate, placa: 'MOCK'+Math.floor(Math.random()*99), Valor: vol*p
+                    });
+                }
+                precoBaseGlobal = pBase;
+                todosPostos = processarPostos(transacoesGlobais, precoBaseGlobal);
+                
+                uiLoader.show(80, 'Processando...');
+                renderKpis(); renderStationsTable(currentFilter); renderOverviewCharts(); renderHeatmap();
+                renderMainChart(currentPeriod); renderPriceChart(currentPeriod); renderPeriodTable(currentPeriod); renderAbcCharts();
+                
+                document.getElementById('statusMsg').textContent = `✅ Mock carregado!`; document.getElementById('statusMsg').className = 'status-msg success';
+                
+                uiLoader.show(100, 'Pronto!');
+                uiLoader.hide();
+            }, 600);
+        });
+
+        // Persistência de Datas
         const inInicio = document.getElementById('dataInicio');
         const inFim = document.getElementById('dataFim');
-
         inInicio.addEventListener('change', () => localStorage.setItem('cavalheiro_dtIni', inInicio.value));
         inFim.addEventListener('change', () => localStorage.setItem('cavalheiro_dtFim', inFim.value));
 
+        // Timer de Atualização
         document.getElementById('autoUpdateToggle').addEventListener('change', (e) => {
             if (e.target.checked) updateTimer = setInterval(conectar, 2 * 60 * 1000); 
             else clearInterval(updateTimer);
         });
 
         document.getElementById('btnConectar').addEventListener('click', conectar);
-        
-        document.getElementById('btnMock').addEventListener('click', () => {
-            document.getElementById('globalMessageArea').innerHTML = '';
-            transacoesGlobais = [];
-            const pBase = parseFloat(document.getElementById('precoBaseInput').value) || 7.18;
-            for(let i=0; i<150; i++) {
-                const vol = 200 + Math.random()*2000; const p = 6.0 + Math.random()*1.5;
-                const cidades = [['MATUPA - MT','MT'], ['FERNANDOPOLIS - SP','SP'], ['CUIABA - MT','MT'], ['SAO JOSE DOS PINHAIS - PR','PR']];
-                const c = cidades[Math.floor(Math.random()*4)];
-                const tDate = new Date(Date.now() - Math.random() * 7 * 86400000); 
-                const isoDate = `${tDate.getFullYear()}-${String(tDate.getMonth()+1).padStart(2,'0')}-${String(tDate.getDate()).padStart(2,'0')} 12:00:00.000`;
-                
-                transacoesGlobais.push({
-                    estabelecimento: 'POSTO TESTE ' + c[0], cidade: c[0].split(' - ')[0], uf: c[1],
-                    volume: vol, valor_litro: p, valor_total: vol*p,
-                    data: isoDate, placa: 'MOCK'+Math.floor(Math.random()*99), Valor: vol*p
-                });
-            }
-            precoBaseGlobal = pBase;
-            todosPostos = processarPostos(transacoesGlobais, precoBaseGlobal);
-            renderKpis(); renderStationsTable(currentFilter); renderOverviewCharts(); renderHeatmap();
-            renderMainChart(currentPeriod); renderPriceChart(currentPeriod); renderPeriodTable(currentPeriod); renderAbcCharts();
-            document.getElementById('statusMsg').textContent = `✅ Mock carregado!`; document.getElementById('statusMsg').className = 'status-msg success';
-        });
 
+        // Abas e Filtros
         document.getElementById('navTabs').addEventListener('click', e => {
             if(e.target.closest('.nav-tab')){
                 document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));
@@ -950,6 +936,7 @@
             if(transacoesGlobais.length > 0) { renderMainChart(currentPeriod); renderPriceChart(currentPeriod); renderPeriodTable(currentPeriod); }
         }));
 
+        // Início (Ao carregar a página)
         window.onload = () => {
             const hoje = new Date(); 
             const formatDataInput = (d) => {
@@ -962,7 +949,7 @@
             inInicio.value = localStorage.getItem('cavalheiro_dtIni') || strHoje;
             inFim.value = localStorage.getItem('cavalheiro_dtFim') || strHoje;
             
-            document.getElementById('globalMessageArea').innerHTML = '<div class="error-container" style="border-color: var(--border-color); color: var(--text-muted);">👆 Utilize o painel lateral para conectar com a TruckPag.</div>';
+            document.getElementById('globalMessageArea').innerHTML = '<div class="error-container" style="border-color: var(--border-color); color: var(--text-muted);">👆 Utilize o menu lateral para conectar com a TruckPag.</div>';
         };
     </script>
 </body>
