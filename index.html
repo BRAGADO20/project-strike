@@ -82,10 +82,11 @@
         .btn-mock { background: var(--sidebar-panel); color: var(--text-light); border: 1px solid var(--input-border); }
         .btn-mock:hover { background: rgba(255,255,255,0.1); }
 
-        .status-msg { font-size: 11px; padding: 8px; border-radius: 8px; background: rgba(0,0,0,0.2); text-align: center; font-weight: 500; min-height: 32px; display: flex; align-items: center; justify-content: center; flex-direction: column; word-break: break-all;}
+        .status-msg { font-size: 11px; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.2); text-align: center; font-weight: 500; min-height: 40px; display: flex; align-items: center; justify-content: center; flex-direction: column; word-break: normal; line-height: 1.4;}
         .status-msg.error { color: #ff6b6b; border: 1px solid #ff6b6b; background: rgba(255, 107, 107, 0.1); }
         .status-msg.success { color: #69db7c; border: 1px solid #69db7c; background: rgba(105, 219, 124, 0.1);}
         .status-msg.info { color: #74c0fc; border: 1px solid #74c0fc; background: rgba(116, 192, 252, 0.1);}
+        .status-msg.warning { color: #f5b041; border: 1px solid #f5b041; background: rgba(245, 176, 65, 0.1);} /* Novo: Estado de Aviso */
 
         .theme-toggle { margin-top: auto; background: transparent; border: 1px solid var(--input-border); color: var(--text-light); padding: 10px; border-radius: 8px; cursor: pointer; font-weight: 600; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
         .theme-toggle:hover { background: rgba(255,255,255,0.1); }
@@ -109,6 +110,15 @@
         .kpi-card.highlight { background: var(--brand-blue); border-left-color: var(--brand-orange); }
         .kpi-card.highlight .label, .kpi-card.highlight .value, .kpi-card.highlight .sub { color: #fff; }
 
+        .class-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
+        .class-card { background: var(--surface-color); border-radius: 12px; padding: 18px; box-shadow: var(--card-shadow); border-top: 4px solid var(--success); }
+        .class-card.class-B { border-top-color: var(--warning); }
+        .class-card.class-C { border-top-color: var(--danger); }
+        .class-card .title { font-size: 15px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px; }
+        .class-card .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+        .class-card .stats .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; }
+        .class-card .stats .value { font-size: 14px; font-weight: 700; color: var(--text-main); }
+
         /* Gráficos & Containers */
         .tab-content { display: none; animation: fadeIn 0.3s ease; }
         .tab-content.active { display: block; }
@@ -119,7 +129,7 @@
         .chart-box { background: var(--surface-color); border-radius: 12px; padding: 20px; box-shadow: var(--card-shadow); }
         .chart-box h3 { font-size: 15px; font-weight: 600; color: var(--text-main); margin-bottom: 16px; }
         .chart-container { position: relative; height: 320px; }
-        .chart-container.map { height: 500px; border-radius: 8px; overflow: hidden; position: relative; }
+        .chart-container.map { height: 500px; border-radius: 8px; overflow: hidden; position: relative; background: #c8d3db; }
 
         .map-legend { position: absolute; bottom: 20px; left: 20px; background: rgba(255,255,255,0.9); padding: 10px 15px; border-radius: 8px; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
         [data-theme="dark"] .map-legend { background: rgba(30,41,59,0.9); color: #fff; }
@@ -160,7 +170,6 @@
             <div class="field">
                 <label>🌐 Ambiente TruckPag</label>
                 <select id="envSelect">
-                    <!-- PRODUÇÃO como default pois é o que traz os dados reais -->
                     <option value="apiprd" selected>Produção (Dados Reais)</option>
                     <option value="apihml">Homologação (Testes)</option>
                 </select>
@@ -190,7 +199,7 @@
 
             <label class="auto-update-toggle">
                 <input type="checkbox" id="autoUpdateToggle">
-                Atualização Automática (5 min)
+                Atualização Automática (2 min)
             </label>
             
             <div class="btn-group">
@@ -461,13 +470,15 @@
             const senhaMD5 = md5(senha);
             const credentials = btoa(usuario + ':' + senhaMD5);
             
-            // Removido Content-Type para evitar acionamento agressivo de Preflight (CORS) em ambientes estritos
             const response = await fetch(`${apiBase}/auth`, {
                 method: 'POST',
                 headers: { 'Authorization': `Basic ${credentials}` }
             });
             
-            if (!response.ok) throw new Error(`Falha no Login (HTTP ${response.status}). Verifique o ambiente (Produção vs Hml), Usuário, Senha ou CORS.`);
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(`Falha no Login (HTTP ${response.status}). Erro API: ${errText}`);
+            }
             
             const data = await response.json();
             if (!data.token) throw new Error('Token não retornado pela API TruckPag.');
@@ -480,12 +491,16 @@
             const url = `${apiBase}/Transacoes?dtini=${formatAPI(dtIni)}&dtfim=${formatAPI(dtFim)}&todas=S`;
             
             const response = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
-            if (!response.ok) throw new Error(`HTTP ${response.status} - Falha ao baixar Transações`);
+            
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(`HTTP ${response.status} - Falha ao baixar Transações: ${errText}`);
+            }
             
             const raw = await response.json();
             const result = [];
             
-            // API Truckpag retorna "JSON Vazio" se não achar nada
+            // API retorna vazio quando não tem dados
             if (!raw || Object.keys(raw).length === 0) return [];
             
             if (raw.Transacoes && Array.isArray(raw.Transacoes)) {
@@ -508,7 +523,6 @@
                     }
                 });
             } else if (Array.isArray(raw)) {
-                // Prevenção caso a TruckPag mude o array pra raiz do JSON sem aviso
                 raw.forEach(t => {
                     if (t.Servico === 'Abastecimento' || t.Servico === 1) {
                          const volume = parseFloat(t.Litragem || t.litragem) || 0;
@@ -581,7 +595,6 @@
             const map = new Map();
             transacoes.forEach(t => {
                 if (!t.data) return;
-                // Previne quebra de timezone com datas formatadas como string "YYYY-MM-DD"
                 const cleanDate = t.data.split(' ')[0]; 
                 const [anoStr, mesStr, diaStr] = cleanDate.split('-');
                 if(!anoStr || !mesStr || !diaStr) return;
@@ -590,7 +603,6 @@
                 
                 let chave;
                 if (tipo === 'daily') {
-                    // Mantém visualização limpa de dia: YYYY-MM-DD
                     chave = cleanDate; 
                 } else if (tipo === 'weekly') {
                     const dia = dt.getDate(), mes = dt.getMonth(), ano = dt.getFullYear();
@@ -611,7 +623,7 @@
         }
 
         // ================================================================
-        // 4. MAPA E RENDERIZAÇÃO
+        // 4. MAPA (HIBRIDO: SATELITE + FRONTEIRAS) E RENDERIZAÇÃO
         // ================================================================
         const coordsBrasil = {
             'MATUPA - MT': { lat: -10.584, lng: -54.928 }, 'VARZEA GRANDE - MT': { lat: -15.65, lng: -56.13 },
@@ -645,11 +657,20 @@
             });
 
             if (mapInstance) mapInstance.remove();
+            
+            // Camada de Ruas (Padrão)
             const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '© OSMap' });
-            const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18, attribution: '© Esri' });
+            
+            // Camada de Satélite (Esri World Imagery)
+            const satBase = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18, attribution: '© Esri' });
+            // Camada de Nomes e Fronteiras (Para sobrepor ao Satélite)
+            const satLabels = L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18 });
+            // Agrupa Satelite + Nomes para não ficar uma tela cega
+            const satHybridLayer = L.layerGroup([satBase, satLabels]);
 
             mapInstance = L.map('heatmap', { layers: [osmLayer], zoomControl: true }).setView([-15.0, -50.0], 4);
-            L.control.layers({ "Ruas": osmLayer, "Satélite": satLayer }).addTo(mapInstance);
+            L.control.layers({ "Mapa de Ruas": osmLayer, "Visão Satélite (Com Fronteiras)": satHybridLayer }).addTo(mapInstance);
+            
             heatmapInstance = L.heatLayer(pontos, { radius: 20, blur: 15, maxZoom: 10, gradient: { 0.2: 'blue', 0.4: 'lime', 0.6: 'yellow', 0.8: 'orange', 1.0: 'red' } }).addTo(mapInstance);
             if(pontos.length > 0) mapInstance.fitBounds(pontos.map(p => [p[0], p[1]]), { padding: [30, 30] });
             renderStateTable(mapCidade);
@@ -733,7 +754,7 @@
             if(chPrice) chPrice.destroy();
             chPrice = new Chart(document.getElementById('priceChart').getContext('2d'), {
                 type: 'line',
-                data: { labels: data.labels, datasets: [{ label: 'Preço Médio (R$/L)', data: data.prices, borderColor: '#ff4500', backgroundColor: 'rgba(255,69,0,0.1)', fill: true, tension: 0.2, pointRadius: 3 }] },
+                data: { labels: data.labels, datasets: [{ label: 'Preço Médio Pago Diário (R$/L)', data: data.prices, borderColor: '#ff4500', backgroundColor: 'rgba(255,69,0,0.1)', fill: true, tension: 0.2, pointRadius: 3 }] },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
             });
         }
@@ -779,7 +800,7 @@
                 thead.innerHTML=`<tr><th class="text-left">ID Título</th><th class="text-left">Vencimento</th><th class="text-right">Valor R$</th></tr>`;
                 dadosIntegracao.titulos.forEach(t => rows += `<tr><td class="text-left">${t.titulo_id||'-'}</td><td class="text-left">${t.data_vencimento||'-'}</td><td class="text-right">${fmt(t.valor_total||0)}</td></tr>`);
             }
-            tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center">Nenhum dado pendente nesta aba.</td></tr>`;
+            tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center" style="padding:30px; color:var(--text-muted);">Nenhum dado pendente nesta aba.</td></tr>`;
         }
 
         // ================================================================
@@ -789,6 +810,10 @@
         async function conectar() {
             if(isConnecting) return; isConnecting=true;
             const statusMsg = document.getElementById('statusMsg');
+            
+            // Limpa as views e coloca o loader
+            todosPostos = []; transacoesGlobais = [];
+            renderKpis(); renderOverviewCharts(); renderMainChart(currentPeriod); renderPriceChart(currentPeriod); renderAbcCharts(); renderStationsTable('all');
             document.getElementById('kpiGrid').innerHTML = '<div class="loader">Conectando à TruckPag e Baixando Dados...</div>';
 
             try {
@@ -800,7 +825,7 @@
 
                 if (!usuario || !senha) throw new Error("Usuário ou Senha não preenchidos.");
 
-                statusMsg.innerHTML = 'Gerando Autenticação...'; statusMsg.className = 'status-msg';
+                statusMsg.innerHTML = 'Gerando Autenticação MD5...'; statusMsg.className = 'status-msg';
 
                 const token = await obterToken(usuario, senha);
 
@@ -820,19 +845,25 @@
                 renderKpis(); renderStationsTable(currentFilter); renderOverviewCharts(); renderHeatmap(); renderIntegration('transacoes');
                 renderMainChart(currentPeriod); renderPriceChart(currentPeriod); renderPeriodTable(currentPeriod); renderAbcCharts();
                 
+                // MENSAGEM CLARA SOBRE A FALTA DE DADOS REAIS
                 if(transacoes.length === 0) {
-                    statusMsg.innerHTML = `⚠️ Conectado, mas <b>nenhum abastecimento</b> localizado para este período.`;
-                    statusMsg.className = 'status-msg warning';
+                    if (pendencias.titulos.length > 0) {
+                        statusMsg.innerHTML = `⚠️ <b>Conectado à Produção!</b><br>Títulos foram carregados, mas não houve <b>nenhum abastecimento</b> processado neste intervalo exato de datas (${dtIni} a ${dtFim}). Tente um período maior.`;
+                        statusMsg.className = 'status-msg warning';
+                    } else {
+                        statusMsg.innerHTML = `⚠️ Conectado, mas <b>nenhum abastecimento</b> localizado para este período.<br><small>Tente aumentar o intervalo de datas ou verifique os fechamentos da frota.</small>`;
+                        statusMsg.className = 'status-msg warning';
+                    }
                 } else {
-                    statusMsg.textContent = `✅ Sucesso: ${transacoes.length} abastecimentos reais carregados!`;
+                    statusMsg.innerHTML = `✅ Sucesso:<br><b>${transacoes.length} abastecimentos carregados!</b>`;
                     statusMsg.className = 'status-msg success';
                 }
 
             } catch (err) {
                 console.error(err);
-                statusMsg.innerHTML = `❌ Erro: ${err.message}<br><small>Dica: Pressione F12 e olhe o 'Console'.</small>`; 
+                statusMsg.innerHTML = `❌ Erro de Conexão: <br><small>${err.message}</small>`; 
                 statusMsg.className = 'status-msg error';
-                document.getElementById('kpiGrid').innerHTML = '';
+                document.getElementById('kpiGrid').innerHTML = ''; // Limpa loader
             } finally {
                 isConnecting = false;
             }
@@ -842,10 +873,10 @@
         // 6. EVENTOS E INICIALIZAÇÃO
         // ================================================================
         
-        // Auto-update Logic
+        // Timer Ajustado para 2 minutos
         document.getElementById('autoUpdateToggle').addEventListener('change', (e) => {
             if (e.target.checked) {
-                updateTimer = setInterval(conectar, 5 * 60 * 1000); // 5 minutes
+                updateTimer = setInterval(conectar, 2 * 60 * 1000); 
             } else {
                 clearInterval(updateTimer);
             }
@@ -856,14 +887,19 @@
         document.getElementById('btnMock').addEventListener('click', () => {
             transacoesGlobais = [];
             const pBase = parseFloat(document.getElementById('precoBaseInput').value) || 7.18;
-            for(let i=0; i<300; i++) {
+            for(let i=0; i<150; i++) {
                 const vol = 200 + Math.random()*2000; const p = 6.0 + Math.random()*1.5;
                 const cidades = [['MATUPA - MT','MT'], ['FERNANDOPOLIS - SP','SP'], ['CUIABA - MT','MT'], ['SAO JOSE DOS PINHAIS - PR','PR']];
                 const c = cidades[Math.floor(Math.random()*4)];
+                
+                // Gera datas realistas dentro do período selecionado
+                const tDate = new Date(Date.now() - Math.random() * 7 * 86400000); 
+                const isoDate = `${tDate.getFullYear()}-${String(tDate.getMonth()+1).padStart(2,'0')}-${String(tDate.getDate()).padStart(2,'0')} 12:00:00.000`;
+                
                 transacoesGlobais.push({
                     estabelecimento: 'POSTO TESTE ' + c[0], cidade: c[0].split(' - ')[0], uf: c[1],
                     volume: vol, valor_litro: p, valor_total: vol*p,
-                    data: new Date(Date.now() - Math.random()*1e10).toISOString().split('T')[0] + ' 12:00:00.000',
+                    data: isoDate,
                     placa: 'MOCK'+Math.floor(Math.random()*99), Valor: vol*p
                 });
             }
@@ -901,10 +937,9 @@
         // Início (Ao carregar a página)
         window.onload = () => {
             const hoje = new Date(); 
-            // Início do mês atual (Ex: 01/09/2026 se estivermos em setembro)
+            // Início do mês atual
             const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
             
-            // Formatador seguro de data
             const formatDataInput = (d) => {
                 const mes = String(d.getMonth() + 1).padStart(2, '0');
                 const dia = String(d.getDate()).padStart(2, '0');
@@ -914,8 +949,8 @@
             document.getElementById('dataInicio').value = formatDataInput(inicioMes);
             document.getElementById('dataFim').value = formatDataInput(hoje);
             
-            // Simula clique no botão para carregar dados se preferir testar logo na abertura
-            // document.getElementById('btnMock').click();
+            // Força carregar um Mock visual só pra não ficar tela branca no início
+            usarMock(); 
         };
     </script>
 </body>
