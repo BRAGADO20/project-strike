@@ -177,19 +177,20 @@
                 </select>
             </div>
             
-            <div class="field" style="display: none;">
+            <!-- Usuário e Senha DESOCULTADOS para forçar a API a gerar o token correto (Legado JWT) -->
+            <div class="field">
                 <label>👤 Usuário</label>
                 <input type="text" id="usuarioInput" placeholder="Usuário" value="CAVALHEIRO.LOGISTICS">
             </div>
-            <div class="field" style="display: none;">
+            <div class="field">
                 <label>🔑 Senha</label>
                 <input type="password" id="senhaInput" placeholder="Senha" value="2Xuzj@r4#">
             </div>
             
-            <!-- Token de Integração Moderno -->
+            <!-- Token mantido como fallback visual -->
             <div class="field" style="margin-top: 5px;">
-                <label>🔐 Token de Integração (TruckPag v2)</label>
-                <input type="text" id="tokenInput" placeholder="Cole o token aqui" value="304|NkyqZedQlyrTLjItQj9tU8sK8YjgvReDs4euHJBD">
+                <label>🔐 Token (Plano B)</label>
+                <input type="text" id="tokenInput" placeholder="Token" value="304|NkyqZedQlyrTLjItQj9tU8sK8YjgvReDs4euHJBD">
             </div>
             
             <div class="field" style="margin-top: 10px;">
@@ -390,6 +391,60 @@
 
     <script>
         // ================================================================
+        // 0. MD5 PARA LOGIN TRUCKPAG
+        // ================================================================
+        function md5(string) {
+            function md5RotateLeft(lValue, iShiftBits) { return (lValue << iShiftBits) | (lValue >>> (32 - iShiftBits)); }
+            function md5AddUnsigned(lX, lY) {
+                var lX4, lY4, lX8, lY8, lResult; lX8 = (lX & 0x80000000); lY8 = (lY & 0x80000000); lX4 = (lX & 0x40000000); lY4 = (lY & 0x40000000); lResult = (lX & 0x3FFFFFFF) + (lY & 0x3FFFFFFF);
+                if (lX4 & lY4) return (lResult ^ 0x80000000 ^ lX8 ^ lY8);
+                if (lX4 | lY4) { if (lResult & 0x40000000) return (lResult ^ 0xC0000000 ^ lX8 ^ lY8); else return (lResult ^ 0x40000000 ^ lX8 ^ lY8); } else return (lResult ^ lX8 ^ lY8);
+            }
+            function md5F(x, y, z) { return (x & y) | ((~x) & z); } function md5G(x, y, z) { return (x & z) | (y & (~z)); } function md5H(x, y, z) { return (x ^ y ^ z); } function md5I(x, y, z) { return (y ^ (x | (~z))); }
+            function md5FF(a, b, c, d, x, s, ac) { a = md5AddUnsigned(a, md5AddUnsigned(md5AddUnsigned(md5F(b, c, d), x), ac)); return md5AddUnsigned(md5RotateLeft(a, s), b); }
+            function md5GG(a, b, c, d, x, s, ac) { a = md5AddUnsigned(a, md5AddUnsigned(md5AddUnsigned(md5G(b, c, d), x), ac)); return md5AddUnsigned(md5RotateLeft(a, s), b); }
+            function md5HH(a, b, c, d, x, s, ac) { a = md5AddUnsigned(a, md5AddUnsigned(md5AddUnsigned(md5H(b, c, d), x), ac)); return md5AddUnsigned(md5RotateLeft(a, s), b); }
+            function md5II(a, b, c, d, x, s, ac) { a = md5AddUnsigned(a, md5AddUnsigned(md5AddUnsigned(md5I(b, c, d), x), ac)); return md5AddUnsigned(md5RotateLeft(a, s), b); }
+            function convertToWordArray(string) {
+                var lMessageLength = string.length; var lNumberOfWords_temp1 = lMessageLength + 8;
+                var lNumberOfWords_temp2 = (lNumberOfWords_temp1 - (lNumberOfWords_temp1 % 64)) / 64; var lNumberOfWords = (lNumberOfWords_temp2 + 1) * 16;
+                var lWordArray = new Array(lNumberOfWords - 1); var lBytePosition = 0; var lByteCount = 0;
+                while (lByteCount < lMessageLength) {
+                    lWordArray[(lBytePosition - (lBytePosition % 4)) / 4] = lWordArray[(lBytePosition - (lBytePosition % 4)) / 4] | (string.charCodeAt(lByteCount) << (lBytePosition % 4) * 8); lByteCount++; lBytePosition++;
+                }
+                lWordArray[(lBytePosition - (lBytePosition % 4)) / 4] = lWordArray[(lBytePosition - (lBytePosition % 4)) / 4] | (0x80 << (lBytePosition % 4) * 8); lWordArray[lNumberOfWords - 2] = lMessageLength << 3; lWordArray[lNumberOfWords - 1] = lMessageLength >>> 29;
+                return lWordArray;
+            }
+            function wordToHex(lValue) {
+                var wordToHexValue = "", wordToHexValue_temp = "", lByte, lCount;
+                for (lCount = 0; lCount <= 3; lCount++) { lByte = (lValue >>> (lCount * 8)) & 255; wordToHexValue_temp = "0" + lByte.toString(16); wordToHexValue = wordToHexValue + wordToHexValue_temp.substr(wordToHexValue_temp.length - 2, 2); }
+                return wordToHexValue;
+            }
+            var x = convertToWordArray(string); var a = 0x67452301; var b = 0xEFCDAB89; var c = 0x98BADCFE; var d = 0x10325476;
+            for (var k = 0; k < x.length; k += 16) {
+                var AA = a, BB = b, CC = c, DD = d;
+                a = md5FF(a, b, c, d, x[k + 0], 7, 0xD76AA478); d = md5FF(d, a, b, c, x[k + 1], 12, 0xE8C7B756); c = md5FF(c, d, a, b, x[k + 2], 17, 0x242070DB); b = md5FF(b, c, d, a, x[k + 3], 22, 0xC1BDCEEE);
+                a = md5FF(a, b, c, d, x[k + 4], 7, 0xF57C0FAF); d = md5FF(d, a, b, c, x[k + 5], 12, 0x4787C62A); c = md5FF(c, d, a, b, x[k + 6], 17, 0xA8304613); b = md5FF(b, c, d, a, x[k + 7], 22, 0xFD469501);
+                a = md5FF(a, b, c, d, x[k + 8], 7, 0x698098D8); d = md5FF(d, a, b, c, x[k + 9], 12, 0x8B44F7AF); c = md5FF(c, d, a, b, x[k + 10], 17, 0xFFFF5BB1); b = md5FF(b, c, d, a, x[k + 11], 22, 0x895CD7BE);
+                a = md5FF(a, b, c, d, x[k + 12], 7, 0x6B901122); d = md5FF(d, a, b, c, x[k + 13], 12, 0xFD987193); c = md5FF(c, d, a, b, x[k + 14], 17, 0xA679438E); b = md5FF(b, c, d, a, x[k + 15], 22, 0x49B40821);
+                a = md5GG(a, b, c, d, x[k + 1], 5, 0xF61E2562); d = md5GG(d, a, b, c, x[k + 6], 9, 0xC040B340); c = md5GG(c, d, a, b, x[k + 11], 14, 0x265E5A51); b = md5GG(b, c, d, a, x[k + 0], 20, 0xE9B6C7AA);
+                a = md5GG(a, b, c, d, x[k + 5], 5, 0xD62F105D); d = md5GG(d, a, b, c, x[k + 10], 9, 0x02441453); c = md5GG(c, d, a, b, x[k + 15], 14, 0xD8A1E681); b = md5GG(b, c, d, a, x[k + 4], 20, 0xE7D3FBC8);
+                a = md5GG(a, b, c, d, x[k + 9], 5, 0x21E1CDE6); d = md5GG(d, a, b, c, x[k + 14], 9, 0xC33707D6); c = md5GG(c, d, a, b, x[k + 3], 14, 0xF4D50D87); b = md5GG(b, c, d, a, x[k + 8], 20, 0x455A14ED);
+                a = md5GG(a, b, c, d, x[k + 13], 5, 0xA9E3E905); d = md5GG(d, a, b, c, x[k + 2], 9, 0xFCEFA3F8); c = md5GG(c, d, a, b, x[k + 7], 14, 0x676F02D9); b = md5GG(b, c, d, a, x[k + 12], 20, 0x8D2A4C8A);
+                a = md5HH(a, b, c, d, x[k + 5], 4, 0xFFFA3942); d = md5HH(d, a, b, c, x[k + 8], 11, 0x8771F681); c = md5HH(c, d, a, b, x[k + 11], 16, 0x6D9D6122); b = md5HH(b, c, d, a, x[k + 14], 23, 0xFDE5380C);
+                a = md5HH(a, b, c, d, x[k + 1], 4, 0xA4BEEA44); d = md5HH(d, a, b, c, x[k + 4], 11, 0x4BDECFA9); c = md5HH(c, d, a, b, x[k + 7], 16, 0xF6BB4B60); b = md5HH(b, c, d, a, x[k + 10], 23, 0xBEBFBC70);
+                a = md5HH(a, b, c, d, x[k + 13], 4, 0x289B7EC6); d = md5HH(d, a, b, c, x[k + 0], 11, 0xEAA127FA); c = md5HH(c, d, a, b, x[k + 3], 16, 0xD4EF3085); b = md5HH(b, c, d, a, x[k + 6], 23, 0x04881D05);
+                a = md5HH(a, b, c, d, x[k + 9], 4, 0xD9D4D039); d = md5HH(d, a, b, c, x[k + 12], 11, 0xE6DB99E5); c = md5HH(c, d, a, b, x[k + 15], 16, 0x1FA27CF8); b = md5HH(b, c, d, a, x[k + 2], 23, 0xC4AC5665);
+                a = md5II(a, b, c, d, x[k + 0], 6, 0xF4292244); d = md5II(d, a, b, c, x[k + 7], 10, 0x432AFF97); c = md5II(c, d, a, b, x[k + 14], 15, 0xAB9423A7); b = md5II(b, c, d, a, x[k + 5], 21, 0xFC93A039);
+                a = md5II(a, b, c, d, x[k + 12], 6, 0x655B59C3); d = md5II(d, a, b, c, x[k + 3], 10, 0x8F0CCC92); c = md5II(c, d, a, b, x[k + 10], 15, 0xFFEFF47D); b = md5II(b, c, d, a, x[k + 1], 21, 0x85845DD1);
+                a = md5II(a, b, c, d, x[k + 8], 6, 0x6FA87E4F); d = md5II(d, a, b, c, x[k + 15], 10, 0xFE2CE6E0); c = md5II(c, d, a, b, x[k + 6], 15, 0xA3014314); b = md5II(b, c, d, a, x[k + 13], 21, 0x4E0811A1);
+                a = md5II(a, b, c, d, x[k + 4], 6, 0xF7537E82); d = md5II(d, a, b, c, x[k + 11], 10, 0xBD3AF235); c = md5II(c, d, a, b, x[k + 2], 15, 0x2AD7D2BB); b = md5II(b, c, d, a, x[k + 9], 21, 0xEB86D391);
+                a = md5AddUnsigned(a, AA); b = md5AddUnsigned(b, BB); c = md5AddUnsigned(c, CC); d = md5AddUnsigned(d, DD);
+            }
+            return (wordToHex(a) + wordToHex(b) + wordToHex(c) + wordToHex(d)).toLowerCase();
+        }
+
+        // ================================================================
         // 1. TEMA E UI
         // ================================================================
         const themeToggle = document.getElementById('themeToggle');
@@ -415,7 +470,7 @@
         // ================================================================
         function getApiBase() { return document.getElementById('envSelect').value === 'apihml' ? 'https://apihomo.truckpag.com.br' : 'https://api.truckpag.com.br'; }
         
-        // Retorna YYYYMMDD para a API Legado
+        // Retorna YYYYMMDD (formato exigido na API Legada documentada no PDF)
         function formatAPI(dateStr) { return dateStr.replace(/-/g, ''); }
 
         let transacoesGlobais = [], todosPostos = [], dadosIntegracao = { transacoes: [], vinculos: [], titulos: [] };
@@ -423,73 +478,36 @@
         let mapInstance = null, heatmapInstance = null;
         let updateTimer = null;
 
-        // FETCH TRANSAÇÕES COM SUPORTE DUPLO (API V2 E API LEGADO)
-        async function fetchTransacoes(token, dtIni, dtFim) {
+        // REALIZA O LOGIN OFICIAL (MD5) DE ACORDO COM O MANUAL PARA OBTER O TOKEN JWT (O ÚNICO ACEITO PELAS ROTAS LEGADAS)
+        async function obterToken(usuario, senha) {
             const apiBase = getApiBase();
-            const result = [];
-            let usouModerna = false;
-
-            // 1. TENTATIVA 1: API MODERNA (TRUCKPAG V2)
-            // Esta API aceita o token "304|..." que você colou e usa formato YYYY-MM-DD
-            try {
-                const modernUrl = `${apiBase}/api/integracao-clientes/relatorios/analitico-abastecimentos`;
-                const modernRes = await fetch(modernUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        data_inicial: dtIni, 
-                        data_final: dtFim    
-                    })
-                });
-
-                if (modernRes.ok) {
-                    const rawModern = await modernRes.json();
-                    if (rawModern && rawModern.Dados && Array.isArray(rawModern.Dados)) {
-                        usouModerna = true;
-                        rawModern.Dados.forEach(item => {
-                            if (item.Transacoes && Array.isArray(item.Transacoes)) {
-                                item.Transacoes.forEach(t => {
-                                    const volume = parseFloat(t.volume || t.litragem) || 0;
-                                    const valorTotal = parseFloat(t.valor_total || t.valor) || 0;
-                                    result.push({
-                                        estabelecimento: t.estabelecimento || t.estabelecimento_nome || t.nome_fantasia || 'Não informado',
-                                        cidade: t.cidade || t.estabelecimento_cidade || '',
-                                        uf: t.uf || t.estabelecimento_estado || '',
-                                        volume: volume,
-                                        valor_litro: volume > 0 ? (valorTotal / volume) : 0,
-                                        valor_total: valorTotal,
-                                        data: t.data_transacao || t.data || '',
-                                        placa: t.placa || t.veiculo_placa || 'ND',
-                                        IdTransacao: t.id_transacao || t.id || '-',
-                                        Valor: valorTotal
-                                    });
-                                });
-                            }
-                        });
-                    }
-                }
-            } catch (e) {
-                console.warn("Aviso: API Moderna falhou, tentando fallback para API Legado...");
+            const senhaMD5 = md5(senha);
+            const credentials = btoa(usuario + ':' + senhaMD5);
+            
+            const response = await fetch(`${apiBase}/auth`, {
+                method: 'POST',
+                headers: { 'Authorization': `Basic ${credentials}` }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Falha no Login (HTTP ${response.status}).`);
             }
+            
+            const data = await response.json();
+            if (!data.token) throw new Error('Token não retornado pela API TruckPag.');
+            return data.token; // Retorna o Token JWT oficial.
+        }
 
-            // Se a API moderna funcionou e trouxe dados (ou array vazio com sucesso), retorne.
-            if (usouModerna) return result;
-
-            // 2. TENTATIVA 2: API LEGADO (/Transacoes)
-            // Se o token for "304|..." essa rota vai dar HTTP 401, pois ela exige o token antigo (JWT).
+        // FETCH TRANSAÇÕES OFICIAL (USANDO APENAS A ROTA /Transacoes DO PDF)
+        async function fetchTransacoesLegado(token, dtIni, dtFim) {
+            const apiBase = getApiBase();
             const url = `${apiBase}/Transacoes?dtini=${formatAPI(dtIni)}&dtfim=${formatAPI(dtFim)}&todas=S`;
+            
             const response = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
             
             if (!response.ok) {
-                if (response.status === 401) {
-                    throw new Error(`HTTP 401 - Acesso Negado. O token fornecido expirou ou é incompatível com a rota legada.`);
-                }
-                const errText = await response.text();
-                throw new Error(`Falha na API (HTTP ${response.status}): ${errText}`);
+                if(response.status === 401) throw new Error(`HTTP 401 - Acesso Negado.`);
+                throw new Error(`Falha em /Transacoes (HTTP ${response.status})`);
             }
             
             const textResponse = await response.text();
@@ -497,6 +515,8 @@
             
             let raw;
             try { raw = JSON.parse(textResponse); } catch (e) { return []; }
+            
+            const result = [];
             
             if (raw.Transacoes && Array.isArray(raw.Transacoes)) {
                 raw.Transacoes.forEach(t => {
@@ -641,16 +661,11 @@
 
             if (mapInstance) mapInstance.remove();
             
-            // Camada de Ruas
             const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '© OSMap' });
-            // Camada de Satélite (Esri World Imagery)
             const satBase = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18, attribution: '© Esri' });
-            // Camada de Nomes e Fronteiras
             const satLabels = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', { maxZoom: 18 });
-            // Agrupa Satelite + Nomes (Híbrido)
             const satHybridLayer = L.layerGroup([satBase, satLabels]);
 
-            // Define o Híbrido como padrão inicial
             mapInstance = L.map('heatmap', { layers: [satHybridLayer], zoomControl: true }).setView([-15.0, -50.0], 4);
             L.control.layers({ "Visão Satélite (Híbrido)": satHybridLayer, "Mapa de Ruas": osmLayer }).addTo(mapInstance);
             
@@ -787,7 +802,7 @@
         }
 
         // ================================================================
-        // 5. MOTOR DE CONEXÃO E TRATAMENTO DE ERROS
+        // 5. MOTOR DE CONEXÃO E TRATAMENTO DE ERROS (DUPLA TENTATIVA)
         // ================================================================
         let isConnecting = false;
         async function conectar() {
@@ -795,44 +810,62 @@
             const statusMsg = document.getElementById('statusMsg');
             const globalMsg = document.getElementById('globalMessageArea');
             
-            // Limpa as views e coloca o loader principal
             todosPostos = []; transacoesGlobais = [];
             document.getElementById('kpiGrid').innerHTML = '';
             globalMsg.innerHTML = '<div class="error-container" style="border-color: var(--brand-blue);">⏳ <b>Conectando à TruckPag...</b><br>Baixando e processando os dados de frota.</div>';
 
             try {
+                const usuario = document.getElementById('usuarioInput').value.trim();
+                const senha = document.getElementById('senhaInput').value;
                 const tkInput = document.getElementById('tokenInput').value.trim();
                 const dtIni = document.getElementById('dataInicio').value;
                 const dtFim = document.getElementById('dataFim').value;
                 precoBaseGlobal = parseFloat(document.getElementById('precoBaseInput').value) || 7.18;
 
-                if (!tkInput) throw new Error("O Token de Integração é obrigatório para prosseguir.");
+                let token = tkInput;
+                let usouLoginMD5 = false;
 
-                statusMsg.textContent = 'Baixando relatórios da API...';
+                // 1. SE O USUÁRIO NÃO COLOCOU TOKEN MANUAL, USA O LOGIN MD5 (DOCUMENTAÇÃO OFICIAL)
+                if (!token) {
+                    if (!usuario || !senha) throw new Error("Preencha o Usuário e Senha (ou cole um Token válido).");
+                    statusMsg.innerHTML = 'Autenticando via Login...'; statusMsg.className = 'status-msg';
+                    token = await obterToken(usuario, senha);
+                    usouLoginMD5 = true;
+                }
 
-                // Chamadas API
-                const [transacoes, pendencias] = await Promise.all([
-                    fetchTransacoes(tkInput, dtIni, dtFim),
-                    fetchPendencias(tkInput, dtIni, dtFim)
-                ]);
+                statusMsg.textContent = 'Baixando relatórios...';
+
+                // 2. TENTA BUSCAR TRANSAÇÕES
+                let transacoes = [];
+                try {
+                    transacoes = await fetchTransacoesLegado(token, dtIni, dtFim);
+                } catch (err) {
+                    // SE O ERRO FOR 401 E O USUÁRIO ESTAVA USANDO O TOKEN MANUAL V2 "304|..."
+                    if (err.message.includes('401') && !usouLoginMD5 && usuario && senha) {
+                        console.warn("Token manual rejeitado. Fallback: Autenticando via Usuário/Senha (MD5)...");
+                        statusMsg.innerHTML = 'Token manual não compatível com API Legada.<br>Autenticando via Login MD5...';
+                        
+                        // IGNORA O TOKEN MANUAL E GERA UM NOVO JWT AUTÊNTICO 
+                        token = await obterToken(usuario, senha);
+                        transacoes = await fetchTransacoesLegado(token, dtIni, dtFim);
+                    } else {
+                        throw err; // Se falhou por outro motivo ou se o próprio MD5 deu 401, lança o erro.
+                    }
+                }
+
+                // 3. BUSCA PENDÊNCIAS COM O TOKEN GARANTIDO (O JWT)
+                const pendencias = await fetchPendencias(token, dtIni, dtFim);
 
                 transacoesGlobais = transacoes;
                 dadosIntegracao = pendencias;
                 
-                // MENSAGEM CLARA SE NÃO TIVER DADOS
                 if(transacoes.length === 0) {
-                    let avisoExtra = '';
-                    if (pendencias.titulos.length > 0) {
-                        avisoExtra = 'A aba de Títulos carregou, o que confirma que sua conexão e token funcionaram. ';
-                    }
-                    globalMsg.innerHTML = `<div class="error-container" style="border-color: var(--warning);">⚠️ <b>Conexão Estabelecida com Sucesso!</b><br><br>Porém, a TruckPag informou que <b>não houve nenhum abastecimento</b> na sua frota entre ${dtIni.split('-').reverse().join('/')} e ${dtFim.split('-').reverse().join('/')}.<br><br><i>${avisoExtra}Tente alterar o intervalo de datas.</i></div>`;
-                    
-                    statusMsg.innerHTML = `⚠️ Conectado (Sem abastecimentos)`;
+                    globalMsg.innerHTML = `<div class="error-container" style="border-color: var(--warning);">⚠️ <b>Conexão Estabelecida com Sucesso!</b><br><br>A TruckPag não retornou <b>nenhum abastecimento</b> na sua frota entre ${dtIni.split('-').reverse().join('/')} e ${dtFim.split('-').reverse().join('/')}.<br><br><i>Tente aumentar o intervalo de datas.</i></div>`;
+                    statusMsg.innerHTML = `⚠️ Conectado (Zero abastecimentos)`;
                     statusMsg.className = 'status-msg warning';
                     
                     renderOverviewCharts(); renderMainChart(currentPeriod); renderPriceChart(currentPeriod); renderAbcCharts(); renderStationsTable('all'); renderIntegration('transacoes');
                 } else {
-                    // SUCESSO ABSOLUTO
                     globalMsg.innerHTML = '';
                     todosPostos = processarPostos(transacoes, precoBaseGlobal);
                     renderKpis(); renderStationsTable(currentFilter); renderOverviewCharts(); renderHeatmap(); renderIntegration('transacoes');
@@ -844,7 +877,6 @@
 
             } catch (err) {
                 console.error(err);
-                
                 globalMsg.innerHTML = `<div class="error-container">❌ <b>Falha na Conexão com a TruckPag</b><br><br>${err.message}</div>`;
                 statusMsg.innerHTML = `❌ Erro de Conexão`; 
                 statusMsg.className = 'status-msg error';
@@ -855,23 +887,17 @@
         }
 
         // ================================================================
-        // 6. EVENTOS E INICIALIZAÇÃO E PERSISTÊNCIA DE DATAS
+        // 6. EVENTOS E INICIALIZAÇÃO
         // ================================================================
-        
         const inInicio = document.getElementById('dataInicio');
         const inFim = document.getElementById('dataFim');
 
-        // Salvar a Data sempre que mudar
         inInicio.addEventListener('change', () => localStorage.setItem('cavalheiro_dtIni', inInicio.value));
         inFim.addEventListener('change', () => localStorage.setItem('cavalheiro_dtFim', inFim.value));
 
-        // Timer Ajustado para 2 minutos
         document.getElementById('autoUpdateToggle').addEventListener('change', (e) => {
-            if (e.target.checked) {
-                updateTimer = setInterval(conectar, 2 * 60 * 1000); 
-            } else {
-                clearInterval(updateTimer);
-            }
+            if (e.target.checked) updateTimer = setInterval(conectar, 2 * 60 * 1000); 
+            else clearInterval(updateTimer);
         });
 
         document.getElementById('btnConectar').addEventListener('click', conectar);
@@ -884,7 +910,6 @@
                 const vol = 200 + Math.random()*2000; const p = 6.0 + Math.random()*1.5;
                 const cidades = [['MATUPA - MT','MT'], ['FERNANDOPOLIS - SP','SP'], ['CUIABA - MT','MT'], ['SAO JOSE DOS PINHAIS - PR','PR']];
                 const c = cidades[Math.floor(Math.random()*4)];
-                
                 const tDate = new Date(Date.now() - Math.random() * 7 * 86400000); 
                 const isoDate = `${tDate.getFullYear()}-${String(tDate.getMonth()+1).padStart(2,'0')}-${String(tDate.getDate()).padStart(2,'0')} 12:00:00.000`;
                 
@@ -925,16 +950,13 @@
             if(transacoesGlobais.length > 0) { renderMainChart(currentPeriod); renderPriceChart(currentPeriod); renderPeriodTable(currentPeriod); }
         }));
 
-        // Início (Ao carregar a página)
         window.onload = () => {
             const hoje = new Date(); 
-            
             const formatDataInput = (d) => {
                 const mes = String(d.getMonth() + 1).padStart(2, '0');
                 const dia = String(d.getDate()).padStart(2, '0');
                 return `${d.getFullYear()}-${mes}-${dia}`;
             };
-            
             const strHoje = formatDataInput(hoje);
 
             inInicio.value = localStorage.getItem('cavalheiro_dtIni') || strHoje;
