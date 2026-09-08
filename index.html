@@ -53,7 +53,7 @@
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Roboto, system-ui, sans-serif; }
-        body { background: var(--bg-color); color: var(--text-main); min-height: 100vh; display: flex; transition: 0.3s; }
+        body { background: var(--bg-color); color: var(--text-main); min-height: 100vh; display: flex; transition: background-color 0.3s, color 0.3s; }
 
         /* ===== SIDEBAR ===== */
         .sidebar {
@@ -82,7 +82,7 @@
         .btn-mock { background: var(--sidebar-panel); color: var(--text-light); border: 1px solid var(--input-border); }
         .btn-mock:hover { background: rgba(255,255,255,0.1); }
 
-        .status-msg { font-size: 11px; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.2); text-align: center; font-weight: 500; min-height: 40px; display: flex; align-items: center; justify-content: center; flex-direction: column; word-break: normal; line-height: 1.4;}
+        .status-msg { font-size: 12px; padding: 12px; border-radius: 8px; background: rgba(0,0,0,0.2); text-align: center; font-weight: 500; min-height: 40px; display: flex; align-items: center; justify-content: center; flex-direction: column; word-break: normal; line-height: 1.4;}
         .status-msg.error { color: #ff6b6b; border: 1px solid #ff6b6b; background: rgba(255, 107, 107, 0.1); }
         .status-msg.success { color: #69db7c; border: 1px solid #69db7c; background: rgba(105, 219, 124, 0.1);}
         .status-msg.info { color: #74c0fc; border: 1px solid #74c0fc; background: rgba(116, 192, 252, 0.1);}
@@ -109,15 +109,6 @@
         .kpi-card .sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
         .kpi-card.highlight { background: var(--brand-blue); border-left-color: var(--brand-orange); }
         .kpi-card.highlight .label, .kpi-card.highlight .value, .kpi-card.highlight .sub { color: #fff; }
-
-        .class-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
-        .class-card { background: var(--surface-color); border-radius: 12px; padding: 18px; box-shadow: var(--card-shadow); border-top: 4px solid var(--success); }
-        .class-card.class-B { border-top-color: var(--warning); }
-        .class-card.class-C { border-top-color: var(--danger); }
-        .class-card .title { font-size: 15px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px; }
-        .class-card .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
-        .class-card .stats .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; }
-        .class-card .stats .value { font-size: 14px; font-weight: 700; color: var(--text-main); }
 
         /* Gráficos & Containers */
         .tab-content { display: none; animation: fadeIn 0.3s ease; }
@@ -157,8 +148,7 @@
         .period-btn.active { background: var(--brand-blue); color: #fff; border-color: var(--brand-blue); }
         .total-row td { background: var(--table-header) !important; font-weight: bold; border-top: 2px solid var(--brand-blue); }
         
-        /* Centralizar mensagens de erro massivas */
-        .error-container { text-align: center; padding: 40px; background: var(--surface-color); border-radius: 12px; border: 2px dashed var(--danger); color: var(--text-main); }
+        .error-container { text-align: center; padding: 40px; background: var(--surface-color); border-radius: 12px; border: 2px dashed var(--danger); color: var(--text-main); line-height: 1.6;}
     </style>
 </head>
 <body>
@@ -185,6 +175,12 @@
             <div class="field">
                 <label>🔑 Senha</label>
                 <input type="password" id="senhaInput" placeholder="Senha" value="2Xuzj@r4#">
+            </div>
+            
+            <!-- Token de Backup Anti-CORS -->
+            <div class="field" style="margin-top: 5px;">
+                <label>🔐 Token (Opcional - Evita bloqueio CORS)</label>
+                <input type="text" id="tokenInput" placeholder="Cole o token aqui" value="">
             </div>
             
             <div class="field" style="margin-top: 10px;">
@@ -230,7 +226,7 @@
                 <button class="nav-tab" data-tab="tab-integration">🔗 Pendências API</button>
             </div>
 
-            <!-- MENSAGEM GLOBAL DE ERRO / LOADING (Substitui os KPIs temporariamente) -->
+            <!-- MENSAGEM GLOBAL DE ERRO / LOADING -->
             <div id="globalMessageArea"></div>
 
             <!-- KPIs -->
@@ -482,8 +478,7 @@
             });
             
             if (!response.ok) {
-                const errText = await response.text();
-                throw new Error(`Falha no Login (HTTP ${response.status}). Erro API: ${errText}`);
+                throw new Error(`Falha no Login (HTTP ${response.status}).`);
             }
             
             const data = await response.json();
@@ -491,30 +486,21 @@
             return data.token;
         }
 
-        // FETCH TRANSAÇÕES COM PARSE SEGURO (Evita quebrar se a API retornar vazio)
+        // FETCH TRANSAÇÕES COM PARSE SEGURO
         async function fetchTransacoes(token, dtIni, dtFim) {
             const apiBase = getApiBase();
             const url = `${apiBase}/Transacoes?dtini=${formatAPI(dtIni)}&dtfim=${formatAPI(dtFim)}&todas=S`;
             
             const response = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
-            
-            if (!response.ok) {
-                const errText = await response.text();
-                throw new Error(`Falha em /Transacoes (HTTP ${response.status}): ${errText}`);
-            }
+            if (!response.ok) throw new Error(`Falha em /Transacoes (HTTP ${response.status})`);
             
             const textResponse = await response.text();
             
-            // SE A API DEVOLVER VAZIO, SIGNIFICA QUE NÃO HÁ DADOS NO PERÍODO. (EVITA O ERRO JSON)
+            // SE A API DEVOLVER VAZIO, SIGNIFICA QUE NÃO HÁ DADOS NO PERÍODO.
             if (!textResponse || textResponse.trim() === '') return []; 
             
             let raw;
-            try {
-                raw = JSON.parse(textResponse);
-            } catch (e) {
-                console.warn("A TruckPag retornou algo que não é JSON:", textResponse);
-                return [];
-            }
+            try { raw = JSON.parse(textResponse); } catch (e) { return []; }
             
             const result = [];
             
@@ -525,15 +511,10 @@
                         const valorTotal = parseFloat(t.Valor) || 0;
                         result.push({
                             estabelecimento: t.NomeFantasiaPosto || t.RazaoSocialPosto || 'Não informado',
-                            cidade: t.CidadePosto || '',
-                            uf: t.UFPosto || '',
-                            volume: volume,
-                            valor_litro: volume > 0 ? (valorTotal / volume) : 0,
-                            valor_total: valorTotal,
-                            data: t.DataTransacao || '',
-                            placa: t.Placa || 'ND',
-                            IdTransacao: t.Transacao || '-',
-                            Valor: valorTotal
+                            cidade: t.CidadePosto || '', uf: t.UFPosto || '', volume: volume,
+                            valor_litro: volume > 0 ? (valorTotal / volume) : 0, valor_total: valorTotal,
+                            data: t.DataTransacao || '', placa: t.Placa || 'ND',
+                            IdTransacao: t.Transacao || '-', Valor: valorTotal
                         });
                     }
                 });
@@ -544,15 +525,10 @@
                          const valorTotal = parseFloat(t.Valor || t.valor) || 0;
                          result.push({
                             estabelecimento: t.NomeFantasiaPosto || t.Estabelecimento || 'Não informado',
-                            cidade: t.CidadePosto || t.Cidade || '',
-                            uf: t.UFPosto || t.UF || '',
-                            volume: volume,
-                            valor_litro: volume > 0 ? (valorTotal / volume) : 0,
-                            valor_total: valorTotal,
-                            data: t.DataTransacao || t.data || '',
-                            placa: t.Placa || t.placa || 'ND',
-                            IdTransacao: t.Transacao || '-',
-                            Valor: valorTotal
+                            cidade: t.CidadePosto || t.Cidade || '', uf: t.UFPosto || t.UF || '',
+                            volume: volume, valor_litro: volume > 0 ? (valorTotal / volume) : 0,
+                            valor_total: valorTotal, data: t.DataTransacao || t.data || '',
+                            placa: t.Placa || t.placa || 'ND', IdTransacao: t.Transacao || '-', Valor: valorTotal
                         });
                     }
                 });
@@ -566,19 +542,13 @@
             let v = [], t = [];
             try {
                 const resV = await fetch(`${apiBase}/NotaFiscal/Vinculo?dtIni=${dtIni}&dtFim=${dtFim}`, { headers: { 'Authorization': `Bearer ${token}` } });
-                if(resV.ok) {
-                    const txt = await resV.text();
-                    if(txt.trim() !== '') v = JSON.parse(txt);
-                }
-            } catch(e) { console.warn('Erro vínculos', e); }
+                if(resV.ok) { const txt = await resV.text(); if(txt.trim() !== '') v = JSON.parse(txt); }
+            } catch(e) {}
             
             try {
                 const resT = await fetch(`${apiBase}/Faturamento/Titulos?dtini=${formatAPI(dtIni)}&dtfim=${formatAPI(dtFim)}`, { headers: { 'Authorization': `Bearer ${token}` } });
-                if(resT.ok) {
-                    const txt = await resT.text();
-                    if(txt.trim() !== '') t = JSON.parse(txt);
-                }
-            } catch(e) { console.warn('Erro títulos', e); }
+                if(resT.ok) { const txt = await resT.text(); if(txt.trim() !== '') t = JSON.parse(txt); }
+            } catch(e) {}
             
             return { vinculos: Array.isArray(v) ? v : [], titulos: Array.isArray(t) ? t : [] };
         }
@@ -605,8 +575,7 @@
             const totalVolume = postos.reduce((s, p) => s + p.volume, 0);
             let acum = 0;
             postos.forEach((p, idx) => {
-                acum += p.volume;
-                p.percentualAcum = totalVolume > 0 ? (acum / totalVolume) * 100 : 0;
+                acum += p.volume; p.percentualAcum = totalVolume > 0 ? (acum / totalVolume) * 100 : 0;
                 p.abc = p.percentualAcum <= 80 ? 'A' : (p.percentualAcum <= 95 ? 'B' : 'C'); p.idx = idx + 1;
             });
             return postos;
@@ -623,9 +592,8 @@
                 const dt = new Date(parseInt(anoStr), parseInt(mesStr)-1, parseInt(diaStr));
                 
                 let chave;
-                if (tipo === 'daily') {
-                    chave = cleanDate; 
-                } else if (tipo === 'weekly') {
+                if (tipo === 'daily') { chave = cleanDate; } 
+                else if (tipo === 'weekly') {
                     const dia = dt.getDate(), mes = dt.getMonth(), ano = dt.getFullYear();
                     const diaSemana = dt.getDay() || 7;
                     const diff = (dia - diaSemana) + (diaSemana === 7 ? 0 : 1);
@@ -679,20 +647,19 @@
 
             if (mapInstance) mapInstance.remove();
             
-            // Camada de Ruas (Padrão)
+            // Camada de Ruas
             const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '© OSMap' });
-            
             // Camada de Satélite (Esri World Imagery)
             const satBase = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18, attribution: '© Esri' });
+            // Camada de Nomes e Fronteiras (CartoDB Labels Only - Perfeito para sobrepor em Satélite)
+            const satLabels = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', { maxZoom: 18 });
             
-            // Camada de Nomes e Fronteiras Corrigida (Esri Boundaries)
-            const satLabels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18 });
-            
-            // Agrupa Satelite + Nomes 
+            // Agrupa Satelite + Nomes (Híbrido)
             const satHybridLayer = L.layerGroup([satBase, satLabels]);
 
-            mapInstance = L.map('heatmap', { layers: [osmLayer], zoomControl: true }).setView([-15.0, -50.0], 4);
-            L.control.layers({ "Mapa de Ruas": osmLayer, "Visão Satélite (Híbrido)": satHybridLayer }).addTo(mapInstance);
+            // Define o Híbrido como padrão inicial
+            mapInstance = L.map('heatmap', { layers: [satHybridLayer], zoomControl: true }).setView([-15.0, -50.0], 4);
+            L.control.layers({ "Visão Satélite (Híbrido)": satHybridLayer, "Mapa de Ruas": osmLayer }).addTo(mapInstance);
             
             heatmapInstance = L.heatLayer(pontos, { radius: 20, blur: 15, maxZoom: 10, gradient: { 0.2: 'blue', 0.4: 'lime', 0.6: 'yellow', 0.8: 'orange', 1.0: 'red' } }).addTo(mapInstance);
             if(pontos.length > 0) mapInstance.fitBounds(pontos.map(p => [p[0], p[1]]), { padding: [30, 30] });
@@ -827,7 +794,7 @@
         }
 
         // ================================================================
-        // 5. MOTOR DE CONEXÃO
+        // 5. MOTOR DE CONEXÃO E TRATAMENTO DE ERROS
         // ================================================================
         let isConnecting = false;
         async function conectar() {
@@ -835,7 +802,6 @@
             const statusMsg = document.getElementById('statusMsg');
             const globalMsg = document.getElementById('globalMessageArea');
             
-            // Limpa as views e coloca o loader principal
             todosPostos = []; transacoesGlobais = [];
             document.getElementById('kpiGrid').innerHTML = '';
             globalMsg.innerHTML = '<div class="error-container" style="border-color: var(--brand-blue);">⏳ <b>Conectando à TruckPag...</b><br>Baixando e processando os dados de frota.</div>';
@@ -843,15 +809,20 @@
             try {
                 const usuario = document.getElementById('usuarioInput').value.trim();
                 const senha = document.getElementById('senhaInput').value;
+                const tkInput = document.getElementById('tokenInput').value.trim();
                 const dtIni = document.getElementById('dataInicio').value;
                 const dtFim = document.getElementById('dataFim').value;
                 precoBaseGlobal = parseFloat(document.getElementById('precoBaseInput').value) || 7.18;
 
-                if (!usuario || !senha) throw new Error("Usuário ou Senha não preenchidos.");
-
-                statusMsg.innerHTML = 'Autenticando...'; statusMsg.className = 'status-msg';
-
-                const token = await obterToken(usuario, senha);
+                let token = tkInput;
+                
+                // Se não colou o Token, tenta fazer o login
+                if (!token) {
+                    if (!usuario || !senha) throw new Error("Usuário ou Senha não preenchidos.");
+                    statusMsg.innerHTML = 'Autenticando...'; statusMsg.className = 'status-msg';
+                    token = await obterToken(usuario, senha);
+                    document.getElementById('tokenInput').value = token; // Salva o token na tela
+                }
 
                 statusMsg.textContent = 'Baixando relatórios...';
 
@@ -864,21 +835,22 @@
                 transacoesGlobais = transacoes;
                 dadosIntegracao = pendencias;
                 
-                // MENSAGEM CLARA SE NÃO TIVER DADOS
+                // TRATAMENTO: CONECTOU, MAS VEIO VAZIO
                 if(transacoes.length === 0) {
-                    globalMsg.innerHTML = `<div class="error-container" style="border-color: var(--warning);">⚠️ <b>Conexão Estabelecida com Sucesso!</b><br><br>Porém, a TruckPag informou que <b>não houve nenhum abastecimento</b> na sua frota entre ${dtIni.split('-').reverse().join('/')} e ${dtFim.split('-').reverse().join('/')}.<br><br><i>Tente aumentar o intervalo de datas no menu lateral.</i></div>`;
+                    let avisoExtra = '';
+                    if (pendencias.titulos.length > 0) {
+                        avisoExtra = 'A aba de Títulos carregou, o que confirma que o login funcionou perfeitamente. ';
+                    }
+                    globalMsg.innerHTML = `<div class="error-container" style="border-color: var(--warning);">⚠️ <b>Conexão Estabelecida com Sucesso!</b><br><br>Porém, a TruckPag informou que <b>não houve nenhum abastecimento</b> na sua frota entre ${dtIni.split('-').reverse().join('/')} e ${dtFim.split('-').reverse().join('/')}.<br><br><i>${avisoExtra}Tente aumentar o intervalo de datas no menu lateral.</i></div>`;
                     
                     statusMsg.innerHTML = `⚠️ Conectado (Sem abastecimentos)`;
                     statusMsg.className = 'status-msg warning';
                     
-                    // Renderiza gráficos vazios mas limpos
                     renderOverviewCharts(); renderMainChart(currentPeriod); renderPriceChart(currentPeriod); renderAbcCharts(); renderStationsTable('all'); renderIntegration('transacoes');
                 } else {
-                    // Limpa a tela de mensagem global pois temos dados!
+                    // SUCESSO ABSOLUTO
                     globalMsg.innerHTML = '';
                     todosPostos = processarPostos(transacoes, precoBaseGlobal);
-
-                    // Render Geral
                     renderKpis(); renderStationsTable(currentFilter); renderOverviewCharts(); renderHeatmap(); renderIntegration('transacoes');
                     renderMainChart(currentPeriod); renderPriceChart(currentPeriod); renderPeriodTable(currentPeriod); renderAbcCharts();
                     
@@ -888,11 +860,16 @@
 
             } catch (err) {
                 console.error(err);
+                
+                // Tratamento específico e humanizado para o erro "Failed to Fetch" (CORS)
+                if (err.message.includes('Failed to fetch')) {
+                    globalMsg.innerHTML = `<div class="error-container">❌ <b>Bloqueio de Segurança do Navegador (CORS)</b><br><br>O navegador bloqueou a conexão automática do GitHub com a TruckPag.<br><br><b>Solução Imediata:</b><br>1. Copie o Token de Integração do WhatsApp.<br>2. Cole ele no campo <b>"Token (Opcional)"</b> no menu à esquerda.<br>3. Clique em Conectar novamente (isso pula o bloqueio).</div>`;
+                } else {
+                    globalMsg.innerHTML = `<div class="error-container">❌ <b>Falha ao Conectar com a TruckPag</b><br><br>${err.message}</div>`;
+                }
+                
                 statusMsg.innerHTML = `❌ Erro de Conexão`; 
                 statusMsg.className = 'status-msg error';
-                
-                // Mostra o Erro Bem Grande na Tela
-                globalMsg.innerHTML = `<div class="error-container">❌ <b>Falha ao Conectar com a TruckPag</b><br><br>${err.message}<br><br><i>Dicas: Verifique se a senha está correta, ou pressione F12 para ver se há bloqueios de rede/CORS no GitHub Pages.</i></div>`;
                 
             } finally {
                 isConnecting = false;
@@ -903,13 +880,6 @@
         // 6. EVENTOS E INICIALIZAÇÃO E PERSISTÊNCIA DE DATAS
         // ================================================================
         
-        const inInicio = document.getElementById('dataInicio');
-        const inFim = document.getElementById('dataFim');
-
-        // Salvar a Data sempre que mudar
-        inInicio.addEventListener('change', () => localStorage.setItem('cavalheiro_dtIni', inInicio.value));
-        inFim.addEventListener('change', () => localStorage.setItem('cavalheiro_dtFim', inFim.value));
-
         // Timer Ajustado para 2 minutos
         document.getElementById('autoUpdateToggle').addEventListener('change', (e) => {
             if (e.target.checked) {
@@ -922,23 +892,20 @@
         document.getElementById('btnConectar').addEventListener('click', conectar);
         
         document.getElementById('btnMock').addEventListener('click', () => {
-            document.getElementById('globalMessageArea').innerHTML = ''; // Limpa mensagens de erro
+            document.getElementById('globalMessageArea').innerHTML = '';
             transacoesGlobais = [];
             const pBase = parseFloat(document.getElementById('precoBaseInput').value) || 7.18;
             for(let i=0; i<150; i++) {
                 const vol = 200 + Math.random()*2000; const p = 6.0 + Math.random()*1.5;
                 const cidades = [['MATUPA - MT','MT'], ['FERNANDOPOLIS - SP','SP'], ['CUIABA - MT','MT'], ['SAO JOSE DOS PINHAIS - PR','PR']];
                 const c = cidades[Math.floor(Math.random()*4)];
-                
-                // Gera datas realistas dentro do período selecionado
                 const tDate = new Date(Date.now() - Math.random() * 7 * 86400000); 
                 const isoDate = `${tDate.getFullYear()}-${String(tDate.getMonth()+1).padStart(2,'0')}-${String(tDate.getDate()).padStart(2,'0')} 12:00:00.000`;
                 
                 transacoesGlobais.push({
                     estabelecimento: 'POSTO TESTE ' + c[0], cidade: c[0].split(' - ')[0], uf: c[1],
                     volume: vol, valor_litro: p, valor_total: vol*p,
-                    data: isoDate,
-                    placa: 'MOCK'+Math.floor(Math.random()*99), Valor: vol*p
+                    data: isoDate, placa: 'MOCK'+Math.floor(Math.random()*99), Valor: vol*p
                 });
             }
             precoBaseGlobal = pBase;
@@ -984,11 +951,11 @@
             
             const strHoje = formatDataInput(hoje);
 
-            // Carrega a data do LocalStorage OU usa a Data de Hoje em AMBOS os campos
-            inInicio.value = localStorage.getItem('cavalheiro_dtIni') || strHoje;
-            inFim.value = localStorage.getItem('cavalheiro_dtFim') || strHoje;
+            // INICIA AMBOS OS CAMPOS COM A DATA DE HOJE (Bug Inversão Corrigido)
+            document.getElementById('dataInicio').value = strHoje;
+            document.getElementById('dataFim').value = strHoje;
             
-            // Limpa as telas iniciais
+            // Limpa a tela inicial
             document.getElementById('globalMessageArea').innerHTML = '<div class="error-container" style="border-color: var(--border-color); color: var(--text-muted);">👆 Utilize o painel lateral para conectar com a TruckPag.</div>';
         };
     </script>
