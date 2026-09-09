@@ -54,7 +54,7 @@
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Roboto, system-ui, sans-serif; }
         body { background: var(--bg-color); color: var(--text-main); min-height: 100vh; display: flex; transition: background-color 0.3s, color 0.3s; overflow-x: hidden; }
 
-        /* ===== CAMADA DE SEGURANÇA (MODAL LOGIN & CADASTRO) ===== */
+        /* ===== MODAL DE LOGIN PRINCIPAL (SEM CADASTRO PÚBLICO) ===== */
         .auth-overlay {
             position: fixed; inset: 0; z-index: 99999;
             background: linear-gradient(135deg, #0b1121 0%, #1e293b 100%);
@@ -63,8 +63,8 @@
 
         .auth-card {
             background: var(--surface-color); color: var(--text-main);
-            width: 100%; max-width: 440px; border-radius: 16px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.3); padding: 35px 30px;
+            width: 100%; max-width: 420px; border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.35); padding: 35px 30px;
             border-top: 5px solid var(--brand-orange); display: flex;
             flex-direction: column; gap: 18px; animation: fadeIn 0.3s ease;
         }
@@ -73,13 +73,7 @@
         .auth-logo img { max-height: 48px; object-fit: contain; }
         .auth-logo-text { font-size: 24px; font-weight: 800; color: var(--brand-blue); }
 
-        .auth-tabs { display: flex; border-bottom: 2px solid var(--border-color); margin-bottom: 5px; }
-        .auth-tab {
-            flex: 1; padding: 10px; background: none; border: none; font-weight: 700;
-            font-size: 13px; color: var(--text-muted); cursor: pointer; text-align: center;
-            border-bottom: 3px solid transparent; margin-bottom: -2px; transition: 0.2s;
-        }
-        .auth-tab.active { color: var(--brand-orange); border-bottom-color: var(--brand-orange); }
+        .auth-title { text-align: center; font-size: 15px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid var(--border-color); padding-bottom: 12px; }
 
         .auth-field { display: flex; flex-direction: column; gap: 6px; }
         .auth-field label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px; }
@@ -89,13 +83,6 @@
             outline: none; transition: 0.2s;
         }
         .auth-field input:focus { border-color: var(--brand-orange); box-shadow: 0 0 0 3px rgba(255,69,0,0.15); }
-
-        .pwd-rules {
-            background: var(--bg-color); padding: 12px; border-radius: 8px;
-            font-size: 11px; display: flex; flex-direction: column; gap: 6px; border: 1px solid var(--border-color);
-        }
-        .pwd-rule-item { display: flex; align-items: center; gap: 6px; color: var(--text-muted); font-weight: 500; }
-        .pwd-rule-item.valid { color: var(--success); font-weight: 700; }
 
         .auth-btn {
             background: var(--brand-orange); color: #fff; border: none; padding: 14px;
@@ -110,6 +97,32 @@
         }
         .auth-alert.error { display: block; background: rgba(220,53,69,0.1); color: var(--danger); border: 1px solid rgba(220,53,69,0.3); }
         .auth-alert.success { display: block; background: rgba(40,167,69,0.1); color: var(--success); border: 1px solid rgba(40,167,69,0.3); }
+
+        /* ===== MODAL DE GESTÃO DO ADMINISTRADOR ===== */
+        .admin-modal-overlay {
+            position: fixed; inset: 0; z-index: 99998;
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(3px);
+            display: none; align-items: center; justify-content: center; padding: 20px;
+        }
+
+        .admin-card {
+            background: var(--surface-color); color: var(--text-main);
+            width: 100%; max-width: 480px; border-radius: 14px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.25); padding: 30px;
+            border-top: 4px solid var(--brand-blue); display: flex;
+            flex-direction: column; gap: 16px; position: relative;
+        }
+
+        .admin-modal-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
+        .admin-modal-header h3 { font-size: 16px; font-weight: 700; color: var(--brand-blue); }
+        .admin-close-btn { background: none; border: none; font-size: 20px; color: var(--text-muted); cursor: pointer; }
+
+        .pwd-rules {
+            background: var(--bg-color); padding: 12px; border-radius: 8px;
+            font-size: 11px; display: flex; flex-direction: column; gap: 6px; border: 1px solid var(--border-color);
+        }
+        .pwd-rule-item { display: flex; align-items: center; gap: 6px; color: var(--text-muted); font-weight: 500; }
+        .pwd-rule-item.valid { color: var(--success); font-weight: 700; }
 
         /* ===== SIDEBAR RETRÁTIL ===== */
         .sidebar {
@@ -166,6 +179,16 @@
 
         .header-right { display: flex; align-items: center; gap: 10px; }
         .user-tag { font-size: 12px; font-weight: 700; color: var(--text-muted); background: var(--bg-color); padding: 6px 12px; border-radius: 20px; border: 1px solid var(--border-color); }
+        
+        /* BOTÃO EXCLUSIVO DO ADMIN */
+        .admin-create-btn {
+            background: linear-gradient(135deg, var(--brand-orange), var(--brand-orange-hover));
+            color: #fff; border: none; padding: 7px 14px; border-radius: 20px;
+            font-weight: 700; font-size: 12px; cursor: pointer; display: none;
+            align-items: center; gap: 6px; transition: 0.2s; box-shadow: 0 2px 8px rgba(255,69,0,0.25);
+        }
+        .admin-create-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(255,69,0,0.35); }
+
         .theme-toggle-header, .logout-btn { background: var(--bg-color); border: 1px solid var(--border-color); color: var(--text-main); padding: 7px 14px; border-radius: 20px; cursor: pointer; font-weight: 600; font-size: 12px; display: flex; align-items: center; gap: 6px; transition: 0.2s; }
         .theme-toggle-header:hover { border-color: var(--brand-orange); color: var(--brand-orange); }
         .logout-btn:hover { border-color: var(--danger); color: var(--danger); background: rgba(220,53,69,0.05); }
@@ -226,7 +249,7 @@
 </head>
 <body>
 
-    <!-- ===== CAMADA DE SEGURANÇA (LOGIN & REGISTRO) ===== -->
+    <!-- ===== CAMADA DE SEGURANÇA (LOGIN PRINCIPAL) ===== -->
     <div class="auth-overlay" id="authOverlay">
         <div class="auth-card">
             <div class="auth-logo">
@@ -236,14 +259,10 @@
                 </div>
             </div>
 
-            <div class="auth-tabs">
-                <button class="auth-tab active" id="tabLoginBtn">Acessar Sistema</button>
-                <button class="auth-tab" id="tabRegisterBtn">Criar Usuário</button>
-            </div>
+            <div class="auth-title">Acesso Seguro ao Sistema</div>
 
             <div class="auth-alert" id="authAlert"></div>
 
-            <!-- FORMULÁRIO DE LOGIN -->
             <form id="loginForm" onsubmit="event.preventDefault(); executarLogin();" style="display: flex; flex-direction: column; gap: 14px;">
                 <div class="auth-field">
                     <label>Usuário</label>
@@ -255,15 +274,26 @@
                 </div>
                 <button type="submit" class="auth-btn">Entrar no Dashboard</button>
             </form>
+        </div>
+    </div>
 
-            <!-- FORMULÁRIO DE CADASTRO COM REGRAS ESTRITAS -->
-            <form id="registerForm" onsubmit="event.preventDefault(); executarCadastro();" style="display: none; flex-direction: column; gap: 12px;">
+    <!-- ===== MODAL EXCLUSIVO DO ADMINISTRADOR (NOVO USUÁRIO) ===== -->
+    <div class="admin-modal-overlay" id="adminModalOverlay">
+        <div class="admin-card">
+            <div class="admin-modal-header">
+                <h3>👑 Cadastro de Novo Usuário (Admin)</h3>
+                <button class="admin-close-btn" id="closeAdminModalBtn" title="Fechar">✕</button>
+            </div>
+
+            <div class="auth-alert" id="adminAlert"></div>
+
+            <form id="adminRegisterForm" onsubmit="event.preventDefault(); executarCadastroAdmin();" style="display: flex; flex-direction: column; gap: 12px;">
                 <div class="auth-field">
-                    <label>Novo Usuário</label>
-                    <input type="text" id="authRegUser" placeholder="Nome de usuário" required autocomplete="username">
+                    <label>Nome de Usuário</label>
+                    <input type="text" id="authRegUser" placeholder="Nome do colaborador" required autocomplete="off">
                 </div>
                 <div class="auth-field">
-                    <label>Nova Senha</label>
+                    <label>Senha de Acesso</label>
                     <input type="password" id="authRegPass" placeholder="Senha complexa" required autocomplete="new-password">
                 </div>
 
@@ -275,7 +305,7 @@
                     <div class="pwd-rule-item" id="ruleSpecial">✕ Pelo menos 1 caractere especial (!@#$%&*)</div>
                 </div>
 
-                <button type="submit" class="auth-btn" id="regSubmitBtn" disabled style="opacity: 0.6; cursor: not-allowed;">Cadastrar Usuário</button>
+                <button type="submit" class="auth-btn" id="regSubmitBtn" disabled style="opacity: 0.6; cursor: not-allowed;">Criar Acesso</button>
             </form>
         </div>
     </div>
@@ -340,6 +370,8 @@
 
             <div class="header-right">
                 <span class="user-tag" id="loggedUserTag">👤 Usuário</span>
+                <!-- BOTÃO RESTRITO AO ADMIN PEDRO.CAVALHEIROLOG -->
+                <button class="admin-create-btn" id="adminUserModalBtn">➕ Novo Usuário</button>
                 <button class="theme-toggle-header" id="themeToggle">🌙 Modo Escuro</button>
                 <button class="logout-btn" id="logoutBtn">🚪 Sair</button>
             </div>
@@ -513,47 +545,63 @@
 
     <script>
         // ================================================================
-        // MÓDULO DE SEGURANÇA E CRIPTOGRAFIA (WEB CRYPTO SHA-256 + SALT)
+        // SEGURANÇA ROBUSTA (WEB CRYPTO API PBKDF2 + SHA-256 + SALT)
         // ================================================================
-        const SECURITY_SALT = "CL_AUTH_SALT_2026_@#!";
+        const ADMIN_USERNAME = 'Pedro.cavalheirolog';
 
-        async function gerarHashSenha(senha) {
+        function bytesToHex(bytes) {
+            return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        function hexToBytes(hex) {
+            const bytes = new Uint8Array(hex.length / 2);
+            for (let i = 0; i < bytes.length; i++) {
+                bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+            }
+            return bytes;
+        }
+
+        async function derivarChavePBKDF2(senha, saltHex = null) {
             const encoder = new TextEncoder();
-            const data = encoder.encode(SECURITY_SALT + senha);
-            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            const salt = saltHex ? hexToBytes(saltHex) : crypto.getRandomValues(new Uint8Array(16));
+            
+            const baseKey = await crypto.subtle.importKey(
+                'raw',
+                encoder.encode(senha),
+                'PBKDF2',
+                false,
+                ['deriveBits']
+            );
+            
+            const derivedBits = await crypto.subtle.deriveBits(
+                {
+                    name: 'PBKDF2',
+                    salt: salt,
+                    iterations: 100000,
+                    hash: 'SHA-256'
+                },
+                baseKey,
+                256
+            );
+            
+            return {
+                hashHex: bytesToHex(new Uint8Array(derivedBits)),
+                saltHex: bytesToHex(salt)
+            };
         }
 
         const authOverlay = document.getElementById('authOverlay');
         const authAlert = document.getElementById('authAlert');
-        const loginForm = document.getElementById('loginForm');
-        const registerForm = document.getElementById('registerForm');
-        const tabLoginBtn = document.getElementById('tabLoginBtn');
-        const tabRegisterBtn = document.getElementById('tabRegisterBtn');
+        const adminModalOverlay = document.getElementById('adminModalOverlay');
+        const adminAlert = document.getElementById('adminAlert');
+        const adminUserModalBtn = document.getElementById('adminUserModalBtn');
+        const closeAdminModalBtn = document.getElementById('closeAdminModalBtn');
         const regSubmitBtn = document.getElementById('regSubmitBtn');
         const authRegPass = document.getElementById('authRegPass');
         const loggedUserTag = document.getElementById('loggedUserTag');
         const logoutBtn = document.getElementById('logoutBtn');
 
-        // Alternância de Abas Login / Cadastro
-        tabLoginBtn.addEventListener('click', () => {
-            tabLoginBtn.classList.add('active');
-            tabRegisterBtn.classList.remove('active');
-            loginForm.style.display = 'flex';
-            registerForm.style.display = 'none';
-            authAlert.style.display = 'none';
-        });
-
-        tabRegisterBtn.addEventListener('click', () => {
-            tabRegisterBtn.classList.add('active');
-            tabLoginBtn.classList.remove('active');
-            registerForm.style.display = 'flex';
-            loginForm.style.display = 'none';
-            authAlert.style.display = 'none';
-        });
-
-        // Validador em Tempo Real de Senha Complexa
+        // Validador de Senha Complexa (Mínimo 8 dígitos, Maiúscula, Minúscula, Número e Especial)
         authRegPass.addEventListener('input', () => {
             const val = authRegPass.value;
             const hasLen = val.length >= 8;
@@ -585,17 +633,18 @@
             }
         }
 
-        async function inicializarUsuariosPadrao() {
+        async function inicializarAdminPadrao() {
             let users = JSON.parse(localStorage.getItem('cavalheiro_app_users') || '{}');
-            // Usuário Admin pré-configurado
-            const adminUser = 'Pedro.cavalheirolog';
             const adminPass = 'Log2026@';
             
-            if (!users[adminUser.toLowerCase()]) {
-                const adminHash = await gerarHashSenha(adminPass);
-                users[adminUser.toLowerCase()] = {
-                    nomeOriginal: adminUser,
-                    hash: adminHash
+            // Cria ou atualiza a hash do administrador com PBKDF2 caso não exista
+            if (!users[ADMIN_USERNAME.toLowerCase()]) {
+                const creds = await derivarChavePBKDF2(adminPass);
+                users[ADMIN_USERNAME.toLowerCase()] = {
+                    nomeOriginal: ADMIN_USERNAME,
+                    hash: creds.hashHex,
+                    salt: creds.saltHex,
+                    isAdmin: true
                 };
                 localStorage.setItem('cavalheiro_app_users', JSON.stringify(users));
             }
@@ -608,61 +657,92 @@
             const targetUser = users[user.toLowerCase()];
 
             if (!targetUser) {
-                mostrarAlerta('Usuário não encontrado.', 'error');
+                mostrarAlerta('Usuário ou senha incorretos.', 'error', authAlert);
                 return;
             }
 
-            const inputHash = await gerarHashSenha(pass);
-            if (inputHash !== targetUser.hash) {
-                mostrarAlerta('Senha incorreta.', 'error');
+            const inputRes = await derivarChavePBKDF2(pass, targetUser.salt);
+            if (inputRes.hashHex !== targetUser.hash) {
+                mostrarAlerta('Usuário ou senha incorretos.', 'error', authAlert);
                 return;
             }
 
-            // Sessão Autorizada
+            const ehAdmin = targetUser.nomeOriginal.toLowerCase() === ADMIN_USERNAME.toLowerCase();
+
             sessionStorage.setItem('cavalheiro_auth_session', JSON.stringify({
                 user: targetUser.nomeOriginal,
+                isAdmin: ehAdmin,
                 logadoEm: Date.now()
             }));
 
             authOverlay.style.display = 'none';
-            loggedUserTag.textContent = '👤 ' + targetUser.nomeOriginal;
-            conectar(); // Inicia o carregamento de dados imediatamente
+            configurarVisaoUsuario(targetUser.nomeOriginal, ehAdmin);
+            conectar();
         }
 
-        async function executarCadastro() {
+        function configurarVisaoUsuario(nome, ehAdmin) {
+            loggedUserTag.textContent = '👤 ' + nome;
+            // Somente o administrador tem acesso ao botão de criar novos usuários
+            if (ehAdmin) {
+                adminUserModalBtn.style.display = 'inline-flex';
+            } else {
+                adminUserModalBtn.style.display = 'none';
+            }
+        }
+
+        // Abertura e Fechamento do Modal Exclusivo de Admin
+        adminUserModalBtn.addEventListener('click', () => {
+            adminModalOverlay.style.display = 'flex';
+            document.getElementById('authRegUser').value = '';
+            document.getElementById('authRegPass').value = '';
+            authRegPass.dispatchEvent(new Event('input'));
+            adminAlert.style.display = 'none';
+        });
+
+        closeAdminModalBtn.addEventListener('click', () => {
+            adminModalOverlay.style.display = 'none';
+        });
+
+        // Cadastro Restrito ao Administrador
+        async function executarCadastroAdmin() {
+            const sessao = JSON.parse(sessionStorage.getItem('cavalheiro_auth_session') || '{}');
+            if (!sessao.isAdmin || sessao.user.toLowerCase() !== ADMIN_USERNAME.toLowerCase()) {
+                mostrarAlerta('Permissão negada. Apenas o administrador pode executar esta ação.', 'error', adminAlert);
+                return;
+            }
+
             const user = document.getElementById('authRegUser').value.trim();
             const pass = document.getElementById('authRegPass').value;
 
             if (user.length < 3) {
-                mostrarAlerta('Nome de usuário muito curto.', 'error');
+                mostrarAlerta('Nome de usuário deve conter ao menos 3 caracteres.', 'error', adminAlert);
                 return;
             }
 
             const users = JSON.parse(localStorage.getItem('cavalheiro_app_users') || '{}');
             if (users[user.toLowerCase()]) {
-                mostrarAlerta('Este usuário já existe no sistema.', 'error');
+                mostrarAlerta('Este usuário já existe no sistema.', 'error', adminAlert);
                 return;
             }
 
-            const hash = await gerarHashSenha(pass);
+            const creds = await derivarChavePBKDF2(pass);
             users[user.toLowerCase()] = {
                 nomeOriginal: user,
-                hash: hash
+                hash: creds.hashHex,
+                salt: creds.saltHex,
+                isAdmin: false
             };
             localStorage.setItem('cavalheiro_app_users', JSON.stringify(users));
 
-            mostrarAlerta('Usuário cadastrado com sucesso! Faça login.', 'success');
+            mostrarAlerta('Usuário "' + user + '" criado com sucesso!', 'success', adminAlert);
             setTimeout(() => {
-                tabLoginBtn.click();
-                document.getElementById('authLoginUser').value = user;
-                document.getElementById('authLoginPass').value = '';
-                document.getElementById('authLoginPass').focus();
+                adminModalOverlay.style.display = 'none';
             }, 1200);
         }
 
-        function mostrarAlerta(msg, tipo) {
-            authAlert.textContent = msg;
-            authAlert.className = 'auth-alert ' + tipo;
+        function mostrarAlerta(msg, tipo, element) {
+            element.textContent = msg;
+            element.className = 'auth-alert ' + tipo;
         }
 
         logoutBtn.addEventListener('click', () => {
@@ -686,17 +766,45 @@
         let mapInstance = null, heatmapInstance = null, markersLayer = null;
         let updateTimer = null;
 
-        let chTop = null, chSav = null, chClass = null, chMain = null, chPrice = null, chAbc = null, chPie = null;
-        function safeDestroy(ch) { if (ch) { try { ch.destroy(); } catch(e){} } return null; }
+        // ================================================================
+        // TEMA, SIDEBAR E BARRA DE LOADING
+        // ================================================================
+        const sidebar = document.getElementById('sidebar');
+        const sidebarCollapseBtn = document.getElementById('sidebarCollapseBtn');
+        const sidebarOpenBtn = document.getElementById('sidebarOpenBtn');
+
+        sidebarCollapseBtn.addEventListener('click', () => {
+            sidebar.classList.add('collapsed');
+            sidebarOpenBtn.style.display = 'flex';
+            setTimeout(() => { if (mapInstance) mapInstance.invalidateSize(); }, 350);
+        });
+
+        sidebarOpenBtn.addEventListener('click', () => {
+            sidebar.classList.remove('collapsed');
+            sidebarOpenBtn.style.display = 'none';
+            setTimeout(() => { if (mapInstance) mapInstance.invalidateSize(); }, 350);
+        });
+
+        const uiLoader = {
+            show: (pct, text) => {
+                document.getElementById('loadingContainer').style.display = 'flex';
+                document.getElementById('progressBar').style.width = pct + '%';
+                document.getElementById('loadingText').textContent = text;
+            },
+            hide: () => {
+                setTimeout(() => { document.getElementById('loadingContainer').style.display = 'none'; }, 800);
+            }
+        };
 
         // ================================================================
-        // CONEXÃO COM A API TRUCKPAG
+        // CONEXÃO COM A API TRUCKPAG (DIRETA E ROBUSTA)
         // ================================================================
         function formatAPI(dateStr) { return dateStr.replace(/-/g, ''); }
 
         async function fetchTransacoes(dtIni, dtFim) {
             const credentials = btoa(CREDENCIAIS.usuario + ':' + CREDENCIAIS.hashMD5);
             
+            // 1. LOGIN OFICIAL NA TRUCKPAG
             const authRes = await fetch(`${CREDENCIAIS.apiBase}/auth`, {
                 method: 'POST',
                 headers: { 'Authorization': `Basic ${credentials}` }
@@ -711,6 +819,7 @@
             const authData = await authRes.json();
             const token = authData.token;
             
+            // 2. BUSCA DE TRANSAÇÕES
             const url = `${CREDENCIAIS.apiBase}/Transacoes?dtini=${formatAPI(dtIni)}&dtfim=${formatAPI(dtFim)}&todas=S`;
             const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
             
@@ -902,7 +1011,6 @@
                 baseCoord = (uf && coordsEstados[uf]) ? coordsEstados[uf] : { lat: -14.0, lng: -54.0 };
             }
 
-            // Dispersão suave com base em hash para que os postos não colidam no mesmo ponto
             let hashVal = 0;
             const seed = (nomePosto || '') + cidadeUfStr;
             for (let i = 0; i < seed.length; i++) hashVal = (hashVal * 31 + seed.charCodeAt(i)) % 10000;
@@ -1395,13 +1503,13 @@
 
         // INICIALIZAÇÃO GERAL E VERIFICAÇÃO DE SESSÃO
         window.onload = async () => {
-            await inicializarUsuariosPadrao();
+            await inicializarAdminPadrao();
 
             // Checagem de Sessão Ativa
             const sessao = JSON.parse(sessionStorage.getItem('cavalheiro_auth_session') || 'null');
             if (sessao && sessao.user) {
                 authOverlay.style.display = 'none';
-                loggedUserTag.textContent = '👤 ' + sessao.user;
+                configurarVisaoUsuario(sessao.user, sessao.isAdmin);
             } else {
                 authOverlay.style.display = 'flex';
             }
