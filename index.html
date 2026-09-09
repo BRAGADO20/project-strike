@@ -54,6 +54,63 @@
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Roboto, system-ui, sans-serif; }
         body { background: var(--bg-color); color: var(--text-main); min-height: 100vh; display: flex; transition: background-color 0.3s, color 0.3s; overflow-x: hidden; }
 
+        /* ===== CAMADA DE SEGURANÇA (MODAL LOGIN & CADASTRO) ===== */
+        .auth-overlay {
+            position: fixed; inset: 0; z-index: 99999;
+            background: linear-gradient(135deg, #0b1121 0%, #1e293b 100%);
+            display: flex; align-items: center; justify-content: center; padding: 20px;
+        }
+
+        .auth-card {
+            background: var(--surface-color); color: var(--text-main);
+            width: 100%; max-width: 440px; border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3); padding: 35px 30px;
+            border-top: 5px solid var(--brand-orange); display: flex;
+            flex-direction: column; gap: 18px; animation: fadeIn 0.3s ease;
+        }
+
+        .auth-logo { text-align: center; margin-bottom: 5px; }
+        .auth-logo img { max-height: 48px; object-fit: contain; }
+        .auth-logo-text { font-size: 24px; font-weight: 800; color: var(--brand-blue); }
+
+        .auth-tabs { display: flex; border-bottom: 2px solid var(--border-color); margin-bottom: 5px; }
+        .auth-tab {
+            flex: 1; padding: 10px; background: none; border: none; font-weight: 700;
+            font-size: 13px; color: var(--text-muted); cursor: pointer; text-align: center;
+            border-bottom: 3px solid transparent; margin-bottom: -2px; transition: 0.2s;
+        }
+        .auth-tab.active { color: var(--brand-orange); border-bottom-color: var(--brand-orange); }
+
+        .auth-field { display: flex; flex-direction: column; gap: 6px; }
+        .auth-field label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px; }
+        .auth-field input {
+            background: var(--bg-color); border: 1px solid var(--border-color);
+            color: var(--text-main); border-radius: 8px; padding: 12px 14px; font-size: 14px;
+            outline: none; transition: 0.2s;
+        }
+        .auth-field input:focus { border-color: var(--brand-orange); box-shadow: 0 0 0 3px rgba(255,69,0,0.15); }
+
+        .pwd-rules {
+            background: var(--bg-color); padding: 12px; border-radius: 8px;
+            font-size: 11px; display: flex; flex-direction: column; gap: 6px; border: 1px solid var(--border-color);
+        }
+        .pwd-rule-item { display: flex; align-items: center; gap: 6px; color: var(--text-muted); font-weight: 500; }
+        .pwd-rule-item.valid { color: var(--success); font-weight: 700; }
+
+        .auth-btn {
+            background: var(--brand-orange); color: #fff; border: none; padding: 14px;
+            border-radius: 8px; font-weight: 700; font-size: 14px; cursor: pointer;
+            transition: 0.2s; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 5px;
+        }
+        .auth-btn:hover { background: var(--brand-orange-hover); }
+
+        .auth-alert {
+            font-size: 12px; padding: 10px; border-radius: 6px; text-align: center;
+            display: none; line-height: 1.4;
+        }
+        .auth-alert.error { display: block; background: rgba(220,53,69,0.1); color: var(--danger); border: 1px solid rgba(220,53,69,0.3); }
+        .auth-alert.success { display: block; background: rgba(40,167,69,0.1); color: var(--success); border: 1px solid rgba(40,167,69,0.3); }
+
         /* ===== SIDEBAR RETRÁTIL ===== */
         .sidebar {
             width: 280px; background: var(--sidebar-bg); color: var(--text-light);
@@ -63,19 +120,9 @@
             transition: width 0.3s ease, padding 0.3s ease, transform 0.3s ease;
         }
 
-        .sidebar.collapsed {
-            width: 0; padding: 0; overflow: hidden; border-right: none;
-        }
-
-        .sidebar-header {
-            display: flex; align-items: center; justify-content: space-between;
-            padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .sidebar-toggle-btn {
-            background: transparent; border: none; color: #fff; font-size: 16px;
-            cursor: pointer; padding: 5px 8px; border-radius: 4px; transition: 0.2s;
-        }
+        .sidebar.collapsed { width: 0; padding: 0; overflow: hidden; border-right: none; }
+        .sidebar-header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .sidebar-toggle-btn { background: transparent; border: none; color: #fff; font-size: 16px; cursor: pointer; padding: 5px 8px; border-radius: 4px; transition: 0.2s; }
         .sidebar-toggle-btn:hover { background: rgba(255,255,255,0.1); color: var(--brand-orange); }
 
         .login-section { display: flex; flex-direction: column; gap: 12px; background: var(--sidebar-panel); padding: 18px 15px; border-radius: 10px; border: 1px solid var(--input-border); }
@@ -84,10 +131,7 @@
         .field input { background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 6px; padding: 10px 12px; color: var(--text-light); font-size: 13px; outline: none; transition: 0.2s; }
         .field input:focus { border-color: var(--brand-orange); }
         
-        .auto-update-box {
-            display: flex; flex-direction: column; gap: 4px; margin-top: 5px;
-            padding: 8px 10px; background: rgba(0,0,0,0.15); border-radius: 6px;
-        }
+        .auto-update-box { display: flex; flex-direction: column; gap: 4px; margin-top: 5px; padding: 8px 10px; background: rgba(0,0,0,0.15); border-radius: 6px; }
         .auto-update-toggle { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--brand-orange); font-weight: bold; cursor: pointer;}
         .auto-update-toggle input { cursor: pointer; width: 16px; height: 16px; accent-color: var(--brand-orange);}
         .auto-update-hint { font-size: 10px; opacity: 0.7; line-height: 1.2; }
@@ -108,7 +152,6 @@
         .main-content { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; width: 100%; }
         
         .top-header { background: var(--surface-color); padding: 10px 25px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); box-shadow: 0 2px 5px rgba(0,0,0,0.02); z-index: 10; position: relative;}
-        
         .header-left { display: flex; align-items: center; gap: 15px; }
         .open-sidebar-btn { background: var(--bg-color); border: 1px solid var(--border-color); color: var(--text-main); font-size: 14px; cursor: pointer; padding: 8px 12px; border-radius: 6px; font-weight: bold; display: none; align-items: center; gap: 6px; transition: 0.2s; }
         .open-sidebar-btn:hover { background: var(--border-color); }
@@ -122,8 +165,10 @@
         .progress-bar-fill { height: 100%; width: 0%; background: var(--brand-orange); transition: width 0.3s ease; }
 
         .header-right { display: flex; align-items: center; gap: 10px; }
-        .theme-toggle-header { background: var(--bg-color); border: 1px solid var(--border-color); color: var(--text-main); padding: 7px 14px; border-radius: 20px; cursor: pointer; font-weight: 600; font-size: 12px; display: flex; align-items: center; gap: 6px; transition: 0.2s; }
+        .user-tag { font-size: 12px; font-weight: 700; color: var(--text-muted); background: var(--bg-color); padding: 6px 12px; border-radius: 20px; border: 1px solid var(--border-color); }
+        .theme-toggle-header, .logout-btn { background: var(--bg-color); border: 1px solid var(--border-color); color: var(--text-main); padding: 7px 14px; border-radius: 20px; cursor: pointer; font-weight: 600; font-size: 12px; display: flex; align-items: center; gap: 6px; transition: 0.2s; }
         .theme-toggle-header:hover { border-color: var(--brand-orange); color: var(--brand-orange); }
+        .logout-btn:hover { border-color: var(--danger); color: var(--danger); background: rgba(220,53,69,0.05); }
 
         .dashboard { flex: 1; padding: 20px 25px; overflow-y: auto; }
 
@@ -175,12 +220,65 @@
 
         .error-container { text-align: center; padding: 25px; background: var(--surface-color); border-radius: 8px; border: 2px dashed var(--border-color); color: var(--text-main); line-height: 1.5; margin-bottom: 20px;}
         
-        /* Popup do Mapa */
         .leaflet-popup-content { font-family: 'Segoe UI', Roboto, sans-serif; font-size: 12px; line-height: 1.5;}
         .leaflet-popup-content h4 { margin: 0 0 5px 0; color: var(--brand-blue); font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 5px;}
     </style>
 </head>
 <body>
+
+    <!-- ===== CAMADA DE SEGURANÇA (LOGIN & REGISTRO) ===== -->
+    <div class="auth-overlay" id="authOverlay">
+        <div class="auth-card">
+            <div class="auth-logo">
+                <img src="cavalheiro-logistics.png" alt="CavalheiroLog" onerror="this.style.display='none'; document.getElementById('authLogoFallback').style.display='block';">
+                <div id="authLogoFallback" class="auth-logo-text" style="display:none;">
+                    Cavalheiro<span style="color:var(--brand-orange)">log</span>
+                </div>
+            </div>
+
+            <div class="auth-tabs">
+                <button class="auth-tab active" id="tabLoginBtn">Acessar Sistema</button>
+                <button class="auth-tab" id="tabRegisterBtn">Criar Usuário</button>
+            </div>
+
+            <div class="auth-alert" id="authAlert"></div>
+
+            <!-- FORMULÁRIO DE LOGIN -->
+            <form id="loginForm" onsubmit="event.preventDefault(); executarLogin();" style="display: flex; flex-direction: column; gap: 14px;">
+                <div class="auth-field">
+                    <label>Usuário</label>
+                    <input type="text" id="authLoginUser" placeholder="Ex: Pedro.cavalheirolog" required autocomplete="username">
+                </div>
+                <div class="auth-field">
+                    <label>Senha</label>
+                    <input type="password" id="authLoginPass" placeholder="••••••••" required autocomplete="current-password">
+                </div>
+                <button type="submit" class="auth-btn">Entrar no Dashboard</button>
+            </form>
+
+            <!-- FORMULÁRIO DE CADASTRO COM REGRAS ESTRITAS -->
+            <form id="registerForm" onsubmit="event.preventDefault(); executarCadastro();" style="display: none; flex-direction: column; gap: 12px;">
+                <div class="auth-field">
+                    <label>Novo Usuário</label>
+                    <input type="text" id="authRegUser" placeholder="Nome de usuário" required autocomplete="username">
+                </div>
+                <div class="auth-field">
+                    <label>Nova Senha</label>
+                    <input type="password" id="authRegPass" placeholder="Senha complexa" required autocomplete="new-password">
+                </div>
+
+                <div class="pwd-rules">
+                    <div class="pwd-rule-item" id="ruleLen">✕ Mínimo de 8 caracteres</div>
+                    <div class="pwd-rule-item" id="ruleUpper">✕ Pelo menos 1 letra maiúscula (A-Z)</div>
+                    <div class="pwd-rule-item" id="ruleLower">✕ Pelo menos 1 letra minúscula (a-z)</div>
+                    <div class="pwd-rule-item" id="ruleNum">✕ Pelo menos 1 número (0-9)</div>
+                    <div class="pwd-rule-item" id="ruleSpecial">✕ Pelo menos 1 caractere especial (!@#$%&*)</div>
+                </div>
+
+                <button type="submit" class="auth-btn" id="regSubmitBtn" disabled style="opacity: 0.6; cursor: not-allowed;">Cadastrar Usuário</button>
+            </form>
+        </div>
+    </div>
 
     <!-- ===== SIDEBAR RETRÁTIL ===== -->
     <div class="sidebar" id="sidebar">
@@ -219,7 +317,7 @@
     <!-- ===== PAINEL PRINCIPAL ===== -->
     <div class="main-content">
         
-        <!-- CABEÇALHO SUPERIOR C/ LOGO E TEMA -->
+        <!-- CABEÇALHO SUPERIOR -->
         <header class="top-header">
             <div class="header-left">
                 <button class="open-sidebar-btn" id="sidebarOpenBtn" title="Abrir Filtros">▶ Filtros</button>
@@ -241,7 +339,9 @@
             </div>
 
             <div class="header-right">
+                <span class="user-tag" id="loggedUserTag">👤 Usuário</span>
                 <button class="theme-toggle-header" id="themeToggle">🌙 Modo Escuro</button>
+                <button class="logout-btn" id="logoutBtn">🚪 Sair</button>
             </div>
         </header>
 
@@ -412,7 +512,167 @@
     </div>
 
     <script>
-        // CREDENCIAIS OFICIAIS EMBUTIDAS (SEM EXPOR INPUTS NA TELA)
+        // ================================================================
+        // MÓDULO DE SEGURANÇA E CRIPTOGRAFIA (WEB CRYPTO SHA-256 + SALT)
+        // ================================================================
+        const SECURITY_SALT = "CL_AUTH_SALT_2026_@#!";
+
+        async function gerarHashSenha(senha) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(SECURITY_SALT + senha);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        const authOverlay = document.getElementById('authOverlay');
+        const authAlert = document.getElementById('authAlert');
+        const loginForm = document.getElementById('loginForm');
+        const registerForm = document.getElementById('registerForm');
+        const tabLoginBtn = document.getElementById('tabLoginBtn');
+        const tabRegisterBtn = document.getElementById('tabRegisterBtn');
+        const regSubmitBtn = document.getElementById('regSubmitBtn');
+        const authRegPass = document.getElementById('authRegPass');
+        const loggedUserTag = document.getElementById('loggedUserTag');
+        const logoutBtn = document.getElementById('logoutBtn');
+
+        // Alternância de Abas Login / Cadastro
+        tabLoginBtn.addEventListener('click', () => {
+            tabLoginBtn.classList.add('active');
+            tabRegisterBtn.classList.remove('active');
+            loginForm.style.display = 'flex';
+            registerForm.style.display = 'none';
+            authAlert.style.display = 'none';
+        });
+
+        tabRegisterBtn.addEventListener('click', () => {
+            tabRegisterBtn.classList.add('active');
+            tabLoginBtn.classList.remove('active');
+            registerForm.style.display = 'flex';
+            loginForm.style.display = 'none';
+            authAlert.style.display = 'none';
+        });
+
+        // Validador em Tempo Real de Senha Complexa
+        authRegPass.addEventListener('input', () => {
+            const val = authRegPass.value;
+            const hasLen = val.length >= 8;
+            const hasUpper = /[A-Z]/.test(val);
+            const hasLower = /[a-z]/.test(val);
+            const hasNum = /[0-9]/.test(val);
+            const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(val);
+
+            atualizarRegra('ruleLen', hasLen, 'Mínimo de 8 caracteres');
+            atualizarRegra('ruleUpper', hasUpper, 'Pelo menos 1 letra maiúscula (A-Z)');
+            atualizarRegra('ruleLower', hasLower, 'Pelo menos 1 letra minúscula (a-z)');
+            atualizarRegra('ruleNum', hasNum, 'Pelo menos 1 número (0-9)');
+            atualizarRegra('ruleSpecial', hasSpecial, 'Pelo menos 1 caractere especial (!@#$%&*)');
+
+            const tudoValido = hasLen && hasUpper && hasLower && hasNum && hasSpecial;
+            regSubmitBtn.disabled = !tudoValido;
+            regSubmitBtn.style.opacity = tudoValido ? '1' : '0.6';
+            regSubmitBtn.style.cursor = tudoValido ? 'pointer' : 'not-allowed';
+        });
+
+        function atualizarRegra(id, valido, texto) {
+            const el = document.getElementById(id);
+            if (valido) {
+                el.className = 'pwd-rule-item valid';
+                el.textContent = '✓ ' + texto;
+            } else {
+                el.className = 'pwd-rule-item';
+                el.textContent = '✕ ' + texto;
+            }
+        }
+
+        async function inicializarUsuariosPadrao() {
+            let users = JSON.parse(localStorage.getItem('cavalheiro_app_users') || '{}');
+            // Usuário Admin pré-configurado
+            const adminUser = 'Pedro.cavalheirolog';
+            const adminPass = 'Log2026@';
+            
+            if (!users[adminUser.toLowerCase()]) {
+                const adminHash = await gerarHashSenha(adminPass);
+                users[adminUser.toLowerCase()] = {
+                    nomeOriginal: adminUser,
+                    hash: adminHash
+                };
+                localStorage.setItem('cavalheiro_app_users', JSON.stringify(users));
+            }
+        }
+
+        async function executarLogin() {
+            const user = document.getElementById('authLoginUser').value.trim();
+            const pass = document.getElementById('authLoginPass').value;
+            const users = JSON.parse(localStorage.getItem('cavalheiro_app_users') || '{}');
+            const targetUser = users[user.toLowerCase()];
+
+            if (!targetUser) {
+                mostrarAlerta('Usuário não encontrado.', 'error');
+                return;
+            }
+
+            const inputHash = await gerarHashSenha(pass);
+            if (inputHash !== targetUser.hash) {
+                mostrarAlerta('Senha incorreta.', 'error');
+                return;
+            }
+
+            // Sessão Autorizada
+            sessionStorage.setItem('cavalheiro_auth_session', JSON.stringify({
+                user: targetUser.nomeOriginal,
+                logadoEm: Date.now()
+            }));
+
+            authOverlay.style.display = 'none';
+            loggedUserTag.textContent = '👤 ' + targetUser.nomeOriginal;
+            conectar(); // Inicia o carregamento de dados imediatamente
+        }
+
+        async function executarCadastro() {
+            const user = document.getElementById('authRegUser').value.trim();
+            const pass = document.getElementById('authRegPass').value;
+
+            if (user.length < 3) {
+                mostrarAlerta('Nome de usuário muito curto.', 'error');
+                return;
+            }
+
+            const users = JSON.parse(localStorage.getItem('cavalheiro_app_users') || '{}');
+            if (users[user.toLowerCase()]) {
+                mostrarAlerta('Este usuário já existe no sistema.', 'error');
+                return;
+            }
+
+            const hash = await gerarHashSenha(pass);
+            users[user.toLowerCase()] = {
+                nomeOriginal: user,
+                hash: hash
+            };
+            localStorage.setItem('cavalheiro_app_users', JSON.stringify(users));
+
+            mostrarAlerta('Usuário cadastrado com sucesso! Faça login.', 'success');
+            setTimeout(() => {
+                tabLoginBtn.click();
+                document.getElementById('authLoginUser').value = user;
+                document.getElementById('authLoginPass').value = '';
+                document.getElementById('authLoginPass').focus();
+            }, 1200);
+        }
+
+        function mostrarAlerta(msg, tipo) {
+            authAlert.textContent = msg;
+            authAlert.className = 'auth-alert ' + tipo;
+        }
+
+        logoutBtn.addEventListener('click', () => {
+            sessionStorage.removeItem('cavalheiro_auth_session');
+            window.location.reload();
+        });
+
+        // ================================================================
+        // CREDENCIAIS OFICIAIS TRUCKPAG (EMBUTIDAS NO JS)
+        // ================================================================
         const CREDENCIAIS = {
             usuario: 'CAVALHEIRO.LOGISTICS',
             hashMD5: '077658c5f44817a3366d50797ceceffe',
@@ -426,72 +686,24 @@
         let mapInstance = null, heatmapInstance = null, markersLayer = null;
         let updateTimer = null;
 
-        // Gráficos instanciados
         let chTop = null, chSav = null, chClass = null, chMain = null, chPrice = null, chAbc = null, chPie = null;
         function safeDestroy(ch) { if (ch) { try { ch.destroy(); } catch(e){} } return null; }
 
         // ================================================================
-        // 1. TEMA, SIDEBAR E BARRA DE LOADING
-        // ================================================================
-        const themeToggle = document.getElementById('themeToggle');
-        let isDarkMode = false;
-        
-        themeToggle.addEventListener('click', () => {
-            isDarkMode = !isDarkMode;
-            document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
-            themeToggle.textContent = isDarkMode ? '☀️ Modo Claro' : '🌙 Modo Escuro';
-            Chart.defaults.color = isDarkMode ? '#94a3b8' : '#6b7a8f';
-            Chart.defaults.scale.grid.color = isDarkMode ? '#334155' : '#eef0f3';
-            renderActiveTab();
-        });
-
-        Chart.defaults.font.family = "'Segoe UI', Roboto, sans-serif";
-        Chart.defaults.color = '#6b7a8f';
-        Chart.defaults.scale.grid.color = '#eef0f3';
-
-        const sidebar = document.getElementById('sidebar');
-        const sidebarCollapseBtn = document.getElementById('sidebarCollapseBtn');
-        const sidebarOpenBtn = document.getElementById('sidebarOpenBtn');
-
-        sidebarCollapseBtn.addEventListener('click', () => {
-            sidebar.classList.add('collapsed');
-            sidebarOpenBtn.style.display = 'flex';
-            setTimeout(() => { if (mapInstance) mapInstance.invalidateSize(); }, 350);
-        });
-
-        sidebarOpenBtn.addEventListener('click', () => {
-            sidebar.classList.remove('collapsed');
-            sidebarOpenBtn.style.display = 'none';
-            setTimeout(() => { if (mapInstance) mapInstance.invalidateSize(); }, 350);
-        });
-
-        const uiLoader = {
-            show: (pct, text) => {
-                document.getElementById('loadingContainer').style.display = 'flex';
-                document.getElementById('progressBar').style.width = pct + '%';
-                document.getElementById('loadingText').textContent = text;
-            },
-            hide: () => {
-                setTimeout(() => { document.getElementById('loadingContainer').style.display = 'none'; }, 800);
-            }
-        };
-
-        // ================================================================
-        // 2. CONEXÃO COM A API TRUCKPAG (DIRETA E ROBUSTA)
+        // CONEXÃO COM A API TRUCKPAG
         // ================================================================
         function formatAPI(dateStr) { return dateStr.replace(/-/g, ''); }
 
         async function fetchTransacoes(dtIni, dtFim) {
             const credentials = btoa(CREDENCIAIS.usuario + ':' + CREDENCIAIS.hashMD5);
             
-            // 1. LOGIN OFICIAL
             const authRes = await fetch(`${CREDENCIAIS.apiBase}/auth`, {
                 method: 'POST',
                 headers: { 'Authorization': `Basic ${credentials}` }
             });
             
             if (!authRes.ok) {
-                if (authRes.status === 403) throw new Error("Acesso 403 Forbidden. Ligue a extensão de CORS no navegador.");
+                if (authRes.status === 403) throw new Error("Acesso 403 Forbidden. Certifique-se de que a extensão de CORS está ligada.");
                 if (authRes.status === 401) throw new Error("Usuário ou Senha inválidos na TruckPag.");
                 throw new Error(`Falha no Login (HTTP ${authRes.status}).`);
             }
@@ -499,7 +711,6 @@
             const authData = await authRes.json();
             const token = authData.token;
             
-            // 2. BUSCA DE TRANSAÇÕES
             const url = `${CREDENCIAIS.apiBase}/Transacoes?dtini=${formatAPI(dtIni)}&dtfim=${formatAPI(dtFim)}&todas=S`;
             const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
             
@@ -569,7 +780,7 @@
         }
 
         // ================================================================
-        // 3. PROCESSAMENTO E CRUZAMENTO DE DADOS
+        // PROCESSAMENTO DE DADOS
         // ================================================================
         function processarPostos(transacoes) {
             const map = new Map();
@@ -627,10 +838,9 @@
         }
 
         // ================================================================
-        // 4. DICIONÁRIO GEOGRÁFICO COMPLETO DO BRASIL & CORREDORES
+        // DICIONÁRIO GEOGRÁFICO & DISPERSÃO DE POSTOS
         // ================================================================
         const coordsBrasil = {
-            // MT
             'CUIABA': { lat: -15.601, lng: -56.097 }, 'VARZEA GRANDE': { lat: -15.646, lng: -56.132 },
             'RONDONOPOLIS': { lat: -16.467, lng: -54.636 }, 'SINOP': { lat: -11.864, lng: -55.505 },
             'SORRISO': { lat: -12.542, lng: -55.721 }, 'LUCAS DO RIO VERDE': { lat: -13.056, lng: -55.910 },
@@ -640,55 +850,28 @@
             'SAPEZAL': { lat: -13.551, lng: -58.814 }, 'CAMPO NOVO DO PARECIS': { lat: -13.676, lng: -57.893 },
             'TANGARA DA SERRA': { lat: -14.622, lng: -57.493 }, 'CACERES': { lat: -16.074, lng: -57.678 },
             'JACIARA': { lat: -15.965, lng: -54.968 }, 'CONFRESA': { lat: -10.643, lng: -51.569 },
-            // MS
             'CAMPO GRANDE': { lat: -20.469, lng: -54.620 }, 'DOURADOS': { lat: -22.223, lng: -54.806 },
-            'TRES LAGOAS': { lat: -20.784, lng: -51.700 }, 'CORUMBA': { lat: -19.007, lng: -57.653 },
-            'NOVA ANDRADINA': { lat: -22.239, lng: -53.343 }, 'MARACAJU': { lat: -21.614, lng: -55.168 },
-            'SAO GABRIEL DO OESTE': { lat: -19.392, lng: -54.572 }, 'COXIM': { lat: -18.506, lng: -54.760 },
-            // GO
-            'GOIANIA': { lat: -16.686, lng: -49.264 }, 'APARECIDA DE GOIANIA': { lat: -16.822, lng: -49.248 },
-            'ANAPOLIS': { lat: -16.326, lng: -48.953 }, 'RIO VERDE': { lat: -17.792, lng: -50.919 },
+            'TRES LAGOAS': { lat: -20.784, lng: -51.700 }, 'NOVA ANDRADINA': { lat: -22.239, lng: -53.343 },
+            'GOIANIA': { lat: -16.686, lng: -49.264 }, 'RIO VERDE': { lat: -17.792, lng: -50.919 },
             'JATAI': { lat: -17.881, lng: -51.714 }, 'ITUMBIARA': { lat: -18.419, lng: -49.216 },
-            'CATALAO': { lat: -18.165, lng: -47.946 }, 'CRISTALINA': { lat: -16.768, lng: -47.613 },
-            // SP
             'SAO PAULO': { lat: -23.550, lng: -46.633 }, 'CAMPINAS': { lat: -22.909, lng: -47.062 },
-            'SANTOS': { lat: -23.960, lng: -46.333 }, 'PAULINIA': { lat: -22.761, lng: -47.153 },
-            'RIBEIRAO PRETO': { lat: -21.176, lng: -47.810 }, 'SAO JOSE DO RIO PRETO': { lat: -20.811, lng: -49.375 },
+            'SANTOS': { lat: -23.960, lng: -46.333 }, 'RIBEIRAO PRETO': { lat: -21.176, lng: -47.810 },
             'FERNANDOPOLIS': { lat: -20.283, lng: -50.246 }, 'PENAPOLIS': { lat: -21.423, lng: -50.081 },
-            'ARARAQUARA': { lat: -21.794, lng: -48.176 }, 'BAURU': { lat: -22.314, lng: -49.058 },
-            'PRESIDENTE PRUDENTE': { lat: -22.125, lng: -51.388 }, 'OURINHOS': { lat: -22.979, lng: -49.870 },
-            'MARILIA': { lat: -22.213, lng: -49.945 }, 'CUBATAO': { lat: -23.895, lng: -46.425 },
-            // PR
+            'ARARAQUARA': { lat: -21.794, lng: -48.176 }, 'CUBATAO': { lat: -23.895, lng: -46.425 },
             'CURITIBA': { lat: -25.428, lng: -49.273 }, 'SAO JOSE DOS PINHAIS': { lat: -25.534, lng: -49.206 },
-            'PARANAGUA': { lat: -25.520, lng: -48.509 }, 'PONTA GROSSA': { lat: -25.095, lng: -50.161 },
-            'LONDRINA': { lat: -23.304, lng: -51.169 }, 'MARINGA': { lat: -23.420, lng: -51.933 },
-            'CASCAVEL': { lat: -24.957, lng: -53.459 }, 'FOZ DO IGUACU': { lat: -25.516, lng: -54.585 },
-            'TOLEDO': { lat: -24.713, lng: -53.742 }, 'GUARAPUAVA': { lat: -25.395, lng: -51.462 },
-            // MG
-            'BELO HORIZONTE': { lat: -19.916, lng: -43.934 }, 'BETIM': { lat: -19.967, lng: -44.198 },
-            'UBERLANDIA': { lat: -18.918, lng: -48.277 }, 'UBERABA': { lat: -19.748, lng: -47.931 },
-            'MONTES CLAROS': { lat: -16.735, lng: -43.861 }, 'PATOS DE MINAS': { lat: -18.578, lng: -46.518 },
-            // RO
-            'PORTO VELHO': { lat: -8.761, lng: -63.903 }, 'VILHENA': { lat: -12.740, lng: -60.145 },
-            'JI-PARANA': { lat: -10.882, lng: -61.945 }, 'ARIQUEMES': { lat: -9.913, lng: -63.040 },
-            // PA
-            'BELEM': { lat: -1.455, lng: -48.490 }, 'ITAITUBA': { lat: -4.276, lng: -55.983 },
-            'MARABA': { lat: -5.368, lng: -49.117 }, 'NOVO PROGRESSO': { lat: -7.149, lng: -55.418 },
-            // BA
-            'SALVADOR': { lat: -12.977, lng: -38.501 }, 'FEIRA DE SANTANA': { lat: -12.266, lng: -38.966 },
-            'BARREIRAS': { lat: -12.144, lng: -44.997 }, 'LUIS EDUARDO MAGALHAES': { lat: -12.096, lng: -45.795 }
+            'PARANAGUA': { lat: -25.520, lng: -48.509 }, 'LONDRINA': { lat: -23.304, lng: -51.169 },
+            'CASCAVEL': { lat: -24.957, lng: -53.459 }, 'TOLEDO': { lat: -24.713, lng: -53.742 },
+            'BELO HORIZONTE': { lat: -19.916, lng: -43.934 }, 'UBERLANDIA': { lat: -18.918, lng: -48.277 },
+            'MONTES CLAROS': { lat: -16.735, lng: -43.861 }, 'PORTO VELHO': { lat: -8.761, lng: -63.903 },
+            'VILHENA': { lat: -12.740, lng: -60.145 }, 'ITAITUBA': { lat: -4.276, lng: -55.983 }
         };
 
         const coordsEstados = {
             'MT': { lat: -12.64, lng: -55.42 }, 'MS': { lat: -20.51, lng: -54.54 }, 'GO': { lat: -15.98, lng: -49.86 },
             'SP': { lat: -21.84, lng: -49.14 }, 'PR': { lat: -24.89, lng: -51.55 }, 'SC': { lat: -27.33, lng: -50.55 },
             'RS': { lat: -29.74, lng: -53.07 }, 'MG': { lat: -18.10, lng: -44.38 }, 'RJ': { lat: -22.25, lng: -42.66 },
-            'ES': { lat: -19.56, lng: -40.54 }, 'BA': { lat: -12.96, lng: -41.68 }, 'SE': { lat: -10.57, lng: -37.45 },
-            'AL': { lat: -9.62, lng: -36.82 }, 'PE': { lat: -8.38, lng: -37.86 }, 'PB': { lat: -7.12, lng: -36.72 },
-            'RN': { lat: -5.68, lng: -36.48 }, 'CE': { lat: -5.20, lng: -39.53 }, 'PI': { lat: -6.60, lng: -42.28 },
-            'MA': { lat: -5.42, lng: -45.44 }, 'TO': { lat: -10.25, lng: -48.25 }, 'PA': { lat: -3.79, lng: -52.48 },
-            'AP': { lat: 1.41, lng: -51.77 }, 'AM': { lat: -4.16, lng: -64.50 }, 'RR': { lat: 1.99, lng: -61.33 },
-            'AC': { lat: -9.16, lng: -70.43 }, 'RO': { lat: -10.90, lng: -62.80 }, 'DF': { lat: -15.78, lng: -47.92 }
+            'ES': { lat: -19.56, lng: -40.54 }, 'BA': { lat: -12.96, lng: -41.68 }, 'TO': { lat: -10.25, lng: -48.25 },
+            'PA': { lat: -3.79, lng: -52.48 }, 'RO': { lat: -10.90, lng: -62.80 }, 'DF': { lat: -15.78, lng: -47.92 }
         };
 
         function normalizarTexto(str) {
@@ -697,49 +880,47 @@
 
         function extrairCoordenada(cidadeUfStr, nomePosto) {
             const raw = normalizarTexto(cidadeUfStr);
-            
-            // 1. Tenta achar pelo nome da cidade diretamente
+            let baseCoord = null;
+
             for (let cid of Object.keys(coordsBrasil)) {
                 if (raw.includes(cid)) {
-                    return coordsBrasil[cid];
+                    baseCoord = coordsBrasil[cid];
+                    break;
                 }
             }
-            
-            // 2. Tenta extrair a UF (ex: "VARZEA GRANDE - MT" ou "MT")
-            let uf = '';
-            const matchUF = raw.match(/\b([A-Z]{2})\b/);
-            if (matchUF && coordsEstados[matchUF[1]]) {
-                uf = matchUF[1];
-            } else {
-                for (let u of Object.keys(coordsEstados)) {
-                    if (raw.endsWith(u) || raw.includes(' ' + u)) { uf = u; break; }
+
+            if (!baseCoord) {
+                let uf = '';
+                const matchUF = raw.match(/\b([A-Z]{2})\b/);
+                if (matchUF && coordsEstados[matchUF[1]]) {
+                    uf = matchUF[1];
+                } else {
+                    for (let u of Object.keys(coordsEstados)) {
+                        if (raw.endsWith(u) || raw.includes(' ' + u)) { uf = u; break; }
+                    }
                 }
+                baseCoord = (uf && coordsEstados[uf]) ? coordsEstados[uf] : { lat: -14.0, lng: -54.0 };
             }
+
+            // Dispersão suave com base em hash para que os postos não colidam no mesmo ponto
+            let hashVal = 0;
+            const seed = (nomePosto || '') + cidadeUfStr;
+            for (let i = 0; i < seed.length; i++) hashVal = (hashVal * 31 + seed.charCodeAt(i)) % 10000;
             
-            if (uf && coordsEstados[uf]) {
-                // Dispersão com base no hash do nome do posto (não agrupa todos no mesmo ponto central do estado)
-                let hashVal = 0;
-                const seed = (nomePosto || '') + cidadeUfStr;
-                for (let i = 0; i < seed.length; i++) hashVal = (hashVal * 31 + seed.charCodeAt(i)) % 1000;
-                
-                const angle = (hashVal / 1000) * 2 * Math.PI;
-                const radius = 0.4 + (hashVal % 100) / 100 * 1.5; // Raio fanning realista
-                return {
-                    lat: coordsEstados[uf].lat + radius * Math.cos(angle),
-                    lng: coordsEstados[uf].lng + radius * Math.sin(angle)
-                };
-            }
-            
-            // Fallback: Centro MT
-            return { lat: -13.0, lng: -56.0 };
+            const angle = (hashVal / 10000) * 2 * Math.PI;
+            const radius = 0.04 + (hashVal % 150) / 150 * 0.18;
+            return {
+                lat: baseCoord.lat + radius * Math.cos(angle),
+                lng: baseCoord.lng + radius * Math.sin(angle)
+            };
         }
 
         // ================================================================
-        // 5. MAPA HÍBRIDO (SATÉLITE + HEATMAP + PINOS ABC)
+        // MAPA HÍBRIDO (CALOR E PINOS ABC)
         // ================================================================
         function renderHeatmap() {
             const container = document.getElementById('heatmap');
-            if (!container || container.clientWidth === 0) return; // Protege contra o erro getImageData
+            if (!container || container.clientWidth === 0) return;
 
             const mapCidade = new Map();
             transacoesGlobais.forEach(t => {
@@ -752,7 +933,6 @@
             const pontosCalor = [];
             mapCidade.forEach((value, key) => {
                 const coord = extrairCoordenada(key, '');
-                // Intensidade calibrada com alta visibilidade
                 const intensity = Math.min(1.0, Math.max(0.4, value.volume / 8000));
                 pontosCalor.push([coord.lat, coord.lng, intensity]);
             });
@@ -762,13 +942,11 @@
                 mapInstance = null;
             }
             
-            // Google Maps Híbrido: Imagem de satélite com rodovias e divisas de estados nítidas
             const googleHybrid = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxZoom: 18, attribution: '© Google Maps' });
             const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '© OpenStreetMap' });
 
             mapInstance = L.map('heatmap', { layers: [googleHybrid], zoomControl: true }).setView([-14.0, -53.0], 5);
             
-            // Heatmap com gradiente vívido de alto contraste sobre satélite
             heatmapInstance = L.heatLayer(pontosCalor, {
                 radius: 35,
                 blur: 20,
@@ -807,7 +985,7 @@
 
             const postosFiltrados = currentMapFilter === 'all' ? todosPostos : todosPostos.filter(p => p.abc === currentMapFilter);
 
-            postosFiltrados.forEach((p, idx) => {
+            postosFiltrados.forEach(p => {
                 const coord = extrairCoordenada(p.cidade, p.posto);
                 let corPino = p.abc === 'A' ? '#28a745' : (p.abc === 'B' ? '#f5b041' : '#dc3545');
 
@@ -836,10 +1014,8 @@
         }
 
         // ================================================================
-        // 6. RENDERIZAÇÃO INTELIGENTE (SEM CRASH EM CANVAS OCULTO)
+        // RENDERIZADORES DE TABELAS E GRÁFICOS
         // ================================================================
-        function fmt(v) { return Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
-
         function renderStateTable(mapCidade) {
             const ufCusto = new Map();
             transacoesGlobais.forEach(t => {
@@ -1023,7 +1199,6 @@
             tbody.innerHTML = rows || `<tr><td colspan="4" class="text-center" style="padding:30px; color:var(--text-muted);">Nenhum dado pendente nesta aba.</td></tr>`;
         }
 
-        // RENDERIZADOR DA ABA ATIVA (EVITA RENDERIZAR ABAS OCULTAS)
         function renderActiveTab() {
             const activeTab = document.querySelector('.nav-tab.active');
             if (!activeTab) return;
@@ -1042,7 +1217,7 @@
         }
 
         // ================================================================
-        // 7. MOTOR DE FILTRO E EXECUÇÃO
+        // MOTOR DE FILTRO E EXECUÇÃO
         // ================================================================
         let isConnecting = false;
         async function conectar() {
@@ -1087,7 +1262,6 @@
                     statusMsg.className = 'status-msg success';
                 }
 
-                // Renderiza exclusivamente a aba que estiver na tela do usuário
                 renderActiveTab();
 
             } catch (err) {
@@ -1103,7 +1277,7 @@
         }
 
         // ================================================================
-        // 8. EVENTOS, VALIDAÇÃO DE DATA E INICIALIZAÇÃO
+        // EVENTOS E INICIALIZAÇÃO
         // ================================================================
         const inInicio = document.getElementById('dataInicio');
         const inFim = document.getElementById('dataFim');
@@ -1145,8 +1319,8 @@
 
         autoToggle.addEventListener('change', (e) => {
             if (e.target.checked) {
-                conectar(); // Roda imediatamente
-                updateTimer = setInterval(conectar, 10 * 1000); // 10 segundos
+                conectar();
+                updateTimer = setInterval(conectar, 10 * 1000); // 10 Segundos
             } else {
                 if (updateTimer) { clearInterval(updateTimer); updateTimer = null; }
             }
@@ -1154,10 +1328,10 @@
 
         document.getElementById('btnConectar').addEventListener('click', conectar);
 
-        // Mock Local
+        // Mock de Teste Local
         document.getElementById('btnMock').addEventListener('click', () => {
             document.getElementById('globalMessageArea').innerHTML = '';
-            uiLoader.show(30, 'Gerando Dados Fictícios...');
+            uiLoader.show(30, 'Gerando Dados de Teste...');
             
             setTimeout(() => {
                 transacoesGlobais = [];
@@ -1185,7 +1359,7 @@
             }, 400);
         });
 
-        // Abas
+        // Troca de Abas
         document.getElementById('navTabs').addEventListener('click', e => {
             if(e.target.closest('.nav-tab')){
                 document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
@@ -1216,11 +1390,22 @@
         document.querySelectorAll('.period-btn[data-period]').forEach(b => b.addEventListener('click', function(){
             document.querySelectorAll('.period-btn[data-period]').forEach(btn => btn.classList.remove('active'));
             this.classList.add('active'); currentPeriod = this.dataset.period;
-            if(transacoesGlobais.length > 0) renderTemporalCharts(currentPeriod);
+            if (transacoesGlobais.length > 0) renderTemporalCharts(currentPeriod);
         }));
 
-        // INICIALIZAÇÃO
-        window.onload = () => {
+        // INICIALIZAÇÃO GERAL E VERIFICAÇÃO DE SESSÃO
+        window.onload = async () => {
+            await inicializarUsuariosPadrao();
+
+            // Checagem de Sessão Ativa
+            const sessao = JSON.parse(sessionStorage.getItem('cavalheiro_auth_session') || 'null');
+            if (sessao && sessao.user) {
+                authOverlay.style.display = 'none';
+                loggedUserTag.textContent = '👤 ' + sessao.user;
+            } else {
+                authOverlay.style.display = 'flex';
+            }
+
             const hoje = new Date();
             const strHoje = formatarDataInput(hoje);
 
